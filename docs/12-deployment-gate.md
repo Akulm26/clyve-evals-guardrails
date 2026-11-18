@@ -32,7 +32,7 @@ Safe and ethical failures **block**. Missing evidence only limits the workflow t
 ```yaml
 name: Clyve teardown outreach
 owner: Akul
-lane: gtm_engineering          # content_ops | ai_visibility | gtm_engineering | marketing_automation
+lane: gtm_engineering          # content_ops | ai_seo | gtm_engineering | marketing_automation
 actions: [score_lead, crm_update, send_single, send_bulk]   # tiers come from the policy file
 guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate]
 judges: [{template: personalisation_factuality, calibration: {labelled_cases: 0, agreement: 0}}]

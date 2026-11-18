@@ -17,7 +17,8 @@ from pathlib import Path
 from .action_gate import ActionGate
 
 GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
-               "automation_guard", "manipulation_guard", "visibility_stats", "action_gate"}
+               "automation_guard", "manipulation_guard", "visibility_stats", "action_gate",
+               "ai_seo_guard", "claim_safety_guard", "enrichment_guard"}
 _BASE = [Path.cwd()]
 
 
@@ -35,7 +36,7 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     gate = ActionGate(policy)
     deploy, safe, ethical = [], [], []   # (ok: bool, message)
 
-    lane = manifest.get("lane")
+    lane = g.get("lane_aliases", {}).get(manifest.get("lane"), manifest.get("lane"))
     actions = manifest.get("actions", [])
     tiers = {a: gate.tier(a) for a in actions}
     has_r3 = "R3" in tiers.values()
@@ -53,11 +54,18 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     safe.append((bool(ks), f"kill switch declared ({ks or 'none'})"))
     if has_r3:
         safe.append((bool(manifest.get("human_approver")), "R3 actions have a named human approver"))
-        safe.append((manifest.get("canary_percent", 0) > 0, "R3 actions run a canary first"))
+        r3 = [a for a, t in tiers.items() if t == "R3"]
+        preview_ok = set(r3) <= {"publish"} and bool(manifest.get("preview_before_publish"))
+        safe.append((manifest.get("canary_percent", 0) > 0 or preview_ok,
+                     "R3 actions run a canary first" + (" (publish: a preview is reviewed before going live)" if preview_ok else "")))
     log = manifest.get("logging", {})
     safe.append((bool(log.get("gate_log")), "every gate decision is logged"))
     safe.append((log.get("retention_days", 0) >= g["min_log_retention_days"], f"logs kept ≥ {g['min_log_retention_days']} days"))
     safe.append((bool(manifest.get("token_budget")), "per-run token budget set"))
+    if "publish" in actions:
+        safe.append((bool(manifest.get("approval_log")), "every publish has a recorded approval (approval_log)"))
+    if any(a in actions for a in ("crm_update", "client_crm_bulk_write")) and lane == "gtm_engineering":
+        safe.append(("enrichment_guard" in guards, "CRM writes go through enrichment_guard (sourced, dated, allowed fields)"))
 
     # ---------- ETHICAL ----------
     data = manifest.get("data", {})
@@ -74,9 +82,9 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     if rep:
         ethical.append((bool(rep.get("discloses_automation")), "automated replies say they are automated"))
         ethical.append((bool(rep.get("human_escalation_path")), "a human is always reachable from an automated reply"))
-    if any(x in guards for x in ("claims_gate", "outreach_guard")) or lane in ("content_ops", "gtm_engineering"):
+    if any(x in guards for x in ("claims_gate", "outreach_guard")) or lane in ("content_ops", "gtm_engineering", "ai_seo"):
         ethical.append(("promise_guard" in guards, "no outcome promises reach a reader (honesty)"))
-    ethical.append(("manipulation_guard" in guards or lane == "ai_visibility", "pressure tactics are flagged for a human (no manipulation)"))
+    ethical.append(("manipulation_guard" in guards or lane == "ai_seo", "pressure tactics are flagged for a human (no manipulation)"))
 
     # ---------- DEPLOYABLE (evidence) ----------
     gs = manifest.get("golden_set")

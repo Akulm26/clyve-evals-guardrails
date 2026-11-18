@@ -115,3 +115,16 @@ class TestDeliverability:
                                           ({"sent": 1000, "bounced": 5}, True), ({}, True)])
     def test_stop_rules(self, stats, ok, policy):
         assert bool(deliverability(stats, policy)) is ok
+
+
+class TestChannelCaps:
+    @pytest.mark.parametrize("channel,cap", [("inmail", 20), ("instagram_dm", 20), ("linkedin_dm", 30)])
+    def test_daily_cap_per_channel(self, channel, cap, outbound, policy):
+        v = run(outbound, policy, msg={"channel": channel}, ctx={"sent_today_by_channel": {channel: cap}})
+        assert any(f"daily {channel} cap reached ({cap}/{cap})" in x for x in v.violations)
+
+    def test_under_cap_passes(self, outbound, policy):
+        assert run(outbound, policy, msg={"channel": "inmail"}, ctx={"sent_today_by_channel": {"inmail": 19}})
+
+    def test_channel_without_cap(self, outbound, policy):
+        assert run(outbound, policy, ctx={"sent_today_by_channel": {"email": 10_000}})

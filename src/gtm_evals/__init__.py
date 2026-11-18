@@ -1,4 +1,4 @@
-"""gtm-evals — evals and guardrails for AI GTM engineering.
+"""gtm-evals — evals and guardrails for AI in marketing automation, GTM engineering, ContentOps and AI SEO.
 
     from gtm_evals import load_policy, claims_gate, outreach_guard, ActionGate
 
@@ -10,8 +10,11 @@
 Every guard returns a Verdict: truthy when it passes, with .violations and .escalate.
 """
 from . import (  # noqa: F401
+    ai_seo_guard,
     automation_guard,
+    claim_safety_guard,
     claims_gate,
+    enrichment_guard,
     injection_guard,
     manipulation_guard,
     outreach_guard,
@@ -27,8 +30,10 @@ __version__ = "0.1.1"
 GUARDS = {
     "claims": claims_gate, "promise": promise_guard, "pii": pii_guard, "injection": injection_guard,
     "outreach": outreach_guard, "automation": automation_guard, "manipulation": manipulation_guard,
+    "claim_safety": claim_safety_guard, "enrichment": enrichment_guard, "ai_seo": ai_seo_guard,
 }
 
 __all__ = ["ActionGate", "Verdict", "combine", "load_policy", "list_profiles", "GUARDS", "__version__",
            "claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
-           "automation_guard", "manipulation_guard", "visibility_stats"]
+           "automation_guard", "manipulation_guard", "visibility_stats",
+           "ai_seo_guard", "claim_safety_guard", "enrichment_guard"]

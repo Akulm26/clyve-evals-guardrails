@@ -22,6 +22,7 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: python -m pytest -m "unit or integration" -q --cov=gtm_evals --cov-report=term-missing --cov-fail-under=95
       - run: python evals/run_evals.py
+      - run: gtm-evals eval evals/lanes.jsonl     # AI SEO, claim safety, enrichment
       - run: python sim/fuzz.py --strict
       - run: python sim/pipeline.py
       - run: gtm-evals gate workflows/*.yaml

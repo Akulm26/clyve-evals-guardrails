@@ -25,6 +25,37 @@ promise:
     - "\\b(cited|recommended|ranked|mentioned|featured)\\s+(in|within)\\s+(a|one|two|three|four|six|\\d+)\\s+(day|week|month)s?\\b"
     - "\\b(the\\s+)?top\\s+(answer|result|recommendation|pick)\\s+(on|in)\\b"
 
+claim_safety:   # regulated categories (ContentOS quality gate). Not legal advice: review against current ASCI / FSSAI rules.
+  regulated_categories: [food, beverage, spice, masala, snack, supplement, nutraceutical, health, wellness, ayurved, pharma,
+                         personal care, skincare, skin care, cosmetic, haircare, hair care, baby, infant, kids nutrition]
+  prohibited:     # can't be claimed for these products
+    - "\\b(cures?|cured|curing|heals?|healing)\\b"
+    - "\\b(treats?|prevents?|reverses?)\\s+(\\w+\\s+){0,2}(diabetes|cancer|covid|disease|illness|infection|blood pressure|bp|cholesterol|thyroid|pcos|arthritis)"
+    - "\\b(anti[- ]?(cancer|diabetic|viral|bacterial))\\b"
+    - "\\bno side[- ]effects?\\b"
+    - "\\b(lose|burn)\\s+\\d+\\s?(kg|kilos?|pounds|lbs)\\b"
+  needs_substantiation:   # allowed only with proof on file
+    - "\\bclinically (proven|tested|shown)\\b"
+    - "\\b(doctor|dermatologist|nutritionist)[- ](recommended|approved|tested)\\b"
+    - "\\b(immunity|immune)[- ]?(boost(er|ing)?|support)\\b"
+    - "\\b100% (natural|organic|pure)\\b"
+    - "\\b(chemical|preservative|toxin)[- ]free\\b"
+    - "\\b(sugar|gluten|dairy)[- ]free\\b"
+    - "\\b(weight loss|fat burn(ing|er)?|detox)\\b"
+    - "\\b(scientifically|lab) (proven|tested)\\b"
+  comparative:    # any category: superlatives and comparisons need proof
+    - "\\b(no\\.? ?1|number one|#1)\\b[^.!?]{0,30}\\b(in india|brand|in the country|seller|selling)\\b"
+    - "\\b(india's|the country's|the world's) (best|first|only|largest|most trusted)\\b"
+    - "\\bbest[- ]selling\\b"
+    - "\\b(better|healthier|purer|tastier) than (other|any|all|regular|leading)\\b"
+
+enrichment:   # GTM: data written to a CRM by an enrichment or research agent
+  max_age_days: 180               # a fact older than this is re-checked, not written
+  min_confidence: 0.7             # when the enrichment tool reports a confidence
+  allowed_fields: []              # if set, only these fields may be written
+  work_contact_only: true         # personal email domains and free-text phone numbers need consent
+  personal_email_domains: [gmail.com, yahoo.com, yahoo.co.in, hotmail.com, outlook.com, rediffmail.com, icloud.com, proton.me]
+
 outreach:
   max_words: 160
   signal_freshness_days: 45
@@ -39,6 +70,8 @@ outreach:
     - "\\byou(?:'re| are) (losing|burning|spending) ₹?\\s?[\\d,]+ (on|in) (ads|cac)"
   stages_with_private_data: ["audit", "build", "retainer"]
   daily_cap_per_inbox: 30
+  # per sender account per day; conservative defaults, well under platform limits — set yours
+  daily_cap_per_channel: {inmail: 20, linkedin_connect: 20, linkedin_dm: 30, instagram_dm: 20, whatsapp: 50, sms: 50}
   stop_bounce_rate: 0.02
   stop_spam_complaint_rate: 0.001
   sender_auth_required: ["spf", "dkim", "dmarc"]
@@ -88,6 +121,22 @@ action_gate:
   max_regenerations: 2
   max_tokens_per_run: 200000
 
+ai_seo:   # technical AI SEO (ContentOS E1/E2). Crawler names change: check each vendor's crawler docs.
+  # Must be allowed, or the brand can't appear in that assistant's search answers / live fetches.
+  answer_crawlers: [OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Googlebot, Bingbot]
+  # Model training. The client's choice: reported by `training_access()`, never failed.
+  training_crawlers: [GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent]
+  min_words_without_js: 120        # visible words a no-JavaScript crawler must find on a key page
+  require_canonical: true
+  required_schema_types: [Organization]
+  schema_required_fields:          # "a|b" = either field
+    Organization: [name, url, "logo|image", sameAs]
+    Person: [name, "jobTitle|worksFor", sameAs]
+    Product: [name, "brand|manufacturer", "offers|aggregateRating|review", "image"]
+    FAQPage: [mainEntity]
+    Article: [headline, "author", datePublished]
+  description_min_overlap: 0.6     # share of the canonical one-liner's words each channel's description must use
+
 visibility:
   query_types: ["brand", "niche", "best_x"]
   min_runs_per_prompt: 2
@@ -108,10 +157,11 @@ manipulation:   # ethics: escalated for a human to verify, never auto-sent
 
 deployment_gate:
   lanes:                     # guards every workflow in a lane must wire in
-    content_ops:          [claims_gate, promise_guard, manipulation_guard]
-    ai_visibility:        [visibility_stats]
+    content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard]
+    ai_seo:               [ai_seo_guard, visibility_stats, promise_guard]
     gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard]
     marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard]
+  lane_aliases: {ai_visibility: ai_seo}   # old name, still accepted
   min_real_golden_cases: 30  # needed before 'deployed'; fewer = pilot only
   judge_min_labels: 30
   judge_min_agreement: 0.85

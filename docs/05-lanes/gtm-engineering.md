@@ -43,3 +43,16 @@ flowchart LR
 - If a lead has no fresh, sourced signal → it doesn't get a personalised opener. Use the teardown finding instead; that's sourced by design.
 - If enrichment confidence < threshold → `needs_manual`, never a best guess.
 - If bounce rate on any inbox crosses the policy stop → `action_gate` pauses that inbox automatically.
+
+
+## Added in 0.1.1
+
+| Failure | Guard |
+|---|---|
+| An enrichment or research agent writes a fact with no source or date, or an old one, and the next email quotes it | `enrichment_guard.check_write(record, policy, today)` |
+| It stores a forbidden field or protected attribute (`founder_religion`, `pan_number`, …), whatever it's called | `enrichment_guard`: blocked by whole-word match on the field name |
+| It stores a personal Gmail or mobile number under legitimate interest | `enrichment_guard`: needs consent |
+| It drops personal data into free-text notes | `enrichment_guard` (runs `pii_guard` on free text) |
+| A sender account gets restricted for sending too many InMails, LinkedIn or Instagram DMs | `outreach_guard`: `daily_cap_per_channel`, with `context["sent_today_by_channel"]` |
+
+In this lane, a workflow with `crm_update` must wire in `enrichment_guard` or the gate blocks it.

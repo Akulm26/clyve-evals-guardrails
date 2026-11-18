@@ -4,13 +4,13 @@ A library that decides whether an automation may reach real people has to be tes
 
 ```text
                  ┌──────────────────────────────────────────────┐
-  system   18    │ built wheel → fresh venv → `gtm-evals` from   │  slowest · what a stranger sees
+  system   20    │ built wheel → fresh venv → `gtm-evals` from   │  slowest · what a stranger sees
                  │ an empty folder · container image             │
                  ├──────────────────────────────────────────────┤
-  integration 79 │ CLI in-process · real policy files · repo     │  modules together
+  integration 91 │ CLI in-process · real policy files · repo     │  modules together
                  │ manifests · pipeline · label sheet → gate     │
                  ├──────────────────────────────────────────────┤
-  unit    329    │ one module at a time · every guard rule ·     │  fastest · run on every save
+  unit    462    │ one module at a time · every guard rule ·     │  fastest · run on every save
                  │ every gate rule · edge cases                  │
                  └──────────────────────────────────────────────┘
   evals          golden sets, adversarial fuzz, held-out set: how good the guards are, not whether the code runs
@@ -32,8 +32,8 @@ python -m pytest --cov=gtm_evals       # coverage (CI fails below 95% on unit + 
 
 | Layer | Folder | Rule | Examples |
 |---|---|---|---|
-| **Unit** | `tests/unit/` | One module, in memory. No subprocesses, no network, no files outside `tmp_path`. | every promise pattern and its negation; Aadhaar vs a 12-digit order ID; quiet-hours boundaries at 21:00 and 10:00; R3 approval IDs that are blank or whitespace; each of the 18 safe/ethical gate rules blocking on its own; judge JSON buried in prose |
-| **Integration** | `tests/integration/` | Modules together, with the repo's real policy files, manifests and datasets. CLI runs in-process so coverage sees it. | every CLI command and exit code; `gtm-evals.yaml` auto-discovery; scraped text → PII redact → model → restore → guards → ActionGate; label sheet → `calibrate --update` → gate flips PILOT ONLY → DEPLOYABLE; README examples match `examples/tour.py`; every YAML in the repo parses |
+| **Unit** | `tests/unit/` | One module, in memory. No subprocesses, no network, no files outside `tmp_path`. | every promise pattern and its negation; robots.txt matching per RFC 9309 (named group beats `*`, longest rule wins, `*` and `$`); JS-only pages; JSON-LD in `@graph`; `founder_religion` vs `page_views`; Aadhaar vs a 12-digit order ID; quiet-hours boundaries at 21:00 and 10:00; R3 approval IDs that are blank or whitespace; each of the 18 safe/ethical gate rules blocking on its own; judge JSON buried in prose |
+| **Integration** | `tests/integration/` | Modules together, with the repo's real policy files, manifests and datasets. CLI runs in-process so coverage sees it. | every CLI command and exit code, including `seo` and `check --category`; the lane golden set (`evals/lanes.jsonl`) meets thresholds; all three Clyve workflows gate PILOT ONLY; `gtm-evals.yaml` auto-discovery; scraped text → PII redact → model → restore → guards → ActionGate; label sheet → `calibrate --update` → gate flips PILOT ONLY → DEPLOYABLE; README examples match `examples/tour.py`; every YAML in the repo parses |
 | **System** | `tests/system/` | The package as shipped. Build the wheel, install it in a new venv, run the console script from an empty folder. Nothing imports from `src/`. | version and author metadata; package data in the wheel and repo internals kept out; README quickstart step by step; no traceback on bad input; missing `[judges]` extra or API key gives a clear message; container image (when Docker is available) |
 
 ## Rules every test follows

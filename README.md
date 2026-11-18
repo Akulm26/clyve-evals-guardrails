@@ -6,9 +6,9 @@
 [![license](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 [![container](https://img.shields.io/badge/ghcr.io-akulm26%2Fgtm--evals-purple)](https://github.com/Akulm26/clyve-evals-guardrails/pkgs/container/gtm-evals)
 
-**A safety check for the AI that runs your marketing.**
+**A safety check for the AI that runs your marketing: marketing automation, GTM engineering, ContentOps and AI SEO.**
 
-gtm-evals sits between your AI and your customers. Before a cold email, post, WhatsApp message or auto-reply written by an LLM reaches a real person, it checks for invented facts, promises you can't keep, pressure tactics, privacy leaks and missing consent. Before an automation goes live, it gives the automation a verdict: **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED**.
+gtm-evals sits between your AI and your customers. Before a cold email, post, WhatsApp message or auto-reply written by an LLM reaches a real person, it checks for invented facts, promises you can't keep, unsafe health claims, pressure tactics, privacy leaks and missing consent. Before you report AI-search progress to a client, it checks that AI crawlers can reach, read and recognise the site, and that the movement beats noise. Before an automation goes live, it gives the automation a verdict: **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED**.
 
 Created by **[Akul S. Malhotra](https://github.com/Akulm26)**, founder of [Clyve](https://clyve.io), a boutique AI consulting firm (*Content Strategy and Engineering*). It began as the gate for Clyve's own client automations and is open-sourced so anyone shipping AI into GTM can use the same bar.
 
@@ -48,6 +48,8 @@ General LLM safety tools look for toxicity, jailbreaks and harmful content. Mark
  1. GUARDRAILS   ─────────────┤  inline, on every output · milliseconds · no API key
     "is this okay to say?"    │  invented numbers · promises · fake personalisation · pressure
                               │  PII sent to a model · prompt injection · consent, opt-out, quiet hours
+                              │  regulated health/food claims · unsourced CRM enrichment
+                              │  AI crawlers blocked · content only after JavaScript · missing schema
                               ▼
  2. ACTION GATE  ─────────────┤  just before anything is sent or changed
     "is this okay to do?"     │  risk tier R0–R3 · bulk sends need a named approver,
@@ -75,7 +77,7 @@ Does an LLM write or send anything a customer, prospect or the public will see?
           deployment gate in CI.
 ```
 
-**Built for:** GTM engineers, growth and marketing-ops teams, and agencies or consultancies shipping AI automations for clients: outbound, content ops, lifecycle and WhatsApp, and AI visibility (AEO/GEO) reporting. It works with any stack that can call Python or run a CLI (n8n code nodes, scripts in front of Clay or Instantly, your own services), and it doesn't send anything itself.
+**Built for:** GTM engineers, growth and marketing-ops teams, and agencies or consultancies shipping AI automations for clients: outbound, content ops, lifecycle and WhatsApp, and AI SEO (AEO/GEO): the technical foundation and the reporting. It works with any stack that can call Python or run a CLI (n8n code nodes, scripts in front of Clay or Instantly, your own services), and it doesn't send anything itself.
 
 **What it is not**
 
@@ -98,10 +100,16 @@ Does an LLM write or send anything a customer, prospect or the public will see?
 | auto-replies "sure, 50% off!" to an angry customer | | `automation_guard` (replies are allowlisted) |
 | bulk-sends with nobody watching | | `ActionGate` (R3: approval + canary + kill switch) |
 | reports "visibility up 30%" that's just noise | | `visibility_stats` |
+| blocks the crawlers that feed AI answers | `User-agent: *` / `Disallow: /products/` | `ai_seo_guard.crawler_access` |
+| hides the content behind JavaScript | a product page that's an empty `<div id="root">` until the script runs | `ai_seo_guard.raw_html` |
+| leaves out or breaks the schema | no Organization/Product JSON-LD, or JSON that doesn't parse | `ai_seo_guard.schema` |
+| calls the brand three different things | "Example Masala" on the site, "Example Foods Pvt Ltd" on LinkedIn | `ai_seo_guard.entity_consistency` |
+| makes a health claim a food can't make | "our haldi masala cures colds", "clinically proven" with no proof | `claim_safety_guard` |
+| writes unsourced or forbidden data to the CRM | a funding stage with no source, a personal Gmail, `founder_religion` | `enrichment_guard` |
 
 ## Concrete examples
 
-Six situations from real GTM work, one per lane. Every output below is the actual output of [`examples/tour.py`](examples/tour.py), so you can run it yourself: `python examples/tour.py`.
+Nine situations from real work across the four lanes. Every output below is the actual output of [`examples/tour.py`](examples/tour.py), so you can run it yourself: `python examples/tour.py`.
 
 ### 1. Content ops: an AI-written post makes up a stat
 
@@ -233,6 +241,73 @@ smallest move 75 runs can prove: 16%
 
 **Why it matters:** with 75 runs, anything smaller than a 16-point move can't be told apart from chance. The brand-query jump is reportable. The niche "+17%" is not, and gtm-evals won't let you report it as a win.
 
+### 7. AI SEO: can AI search reach, read and recognise the brand?
+
+Before anyone reports AI-visibility numbers, the technical basics have to hold. Here the site blocks product pages for every crawler, the product page is a JavaScript shell, and the brand has a different name on LinkedIn.
+
+```python
+ai_seo_guard.crawler_access(robots_txt, policy, path="/products/chai-masala")
+ai_seo_guard.check_page(html, policy, must_contain=["winter chai masala"], required_schema=["Organization", "Product"])
+ai_seo_guard.entity_consistency(profiles, canonical, policy)
+```
+
+```text
+robots.txt (product pages)                   FAIL
+   - OAI-SearchBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - ChatGPT-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - Claude-SearchBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - Claude-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - PerplexityBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - Perplexity-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - Googlebot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   - Bingbot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+training crawlers allowed: {'GPTBot': False, 'ClaudeBot': True}
+product page as served                       FAIL
+   - only 0 words readable without JavaScript, need ≥ 120 (looks like a JavaScript-only page)
+   - not in the raw HTML (only shows after JavaScript, or missing): 'winter chai masala'
+   - no canonical link
+   - no Organization schema (JSON-LD)
+   - no Product schema (JSON-LD)
+brand across channels                        FAIL
+   - linkedin: name 'Example Foods Pvt Ltd' differs from 'Example Masala'
+   - google_business: description doesn't match the canonical one-liner (0% overlap, need ≥ 60%)
+```
+
+**Why it matters:** these are the parts of AI SEO you *can* promise (ContentOS E1 and E2). Search and answer crawlers must be allowed; training crawlers like GPTBot are the client's choice, so they're reported and never fail the check. Crawler names live in the policy (`ai_seo.answer_crawlers`) because vendors add new ones. From the command line: `gtm-evals seo page.html --robots robots.txt --must "winter chai masala"`.
+
+### 8. ContentOps: a food brand's post makes claims it can't make
+
+```python
+claim_safety_guard.check(draft, category="spice", policy=policy)
+```
+
+```text
+AI draft for a masala brand                  FAIL · escalate to a human
+   - prohibited for 'spice': 'cures' — remove it
+   - needs proof the approver has seen: 'clinically proven'
+   - needs proof the approver has seen: 'No. 1 masala brand'
+after the approver's edit                    PASS
+```
+
+**Why it matters:** a food can't claim to cure anything, and "clinically proven" or "No. 1" needs proof the approver has actually seen. The rule-based pass catches the obvious ones before the `claim_safety` judge reads the rest. The patterns follow the ASCI code and FSSAI advertising rules as a starting point; they're not legal advice. From the command line: `gtm-evals check draft.txt --category food`.
+
+### 9. GTM engineering: what an enrichment agent writes to the CRM
+
+Whatever lands in the CRM becomes the "fact" the next cold email quotes.
+
+```python
+enrichment_guard.check_write(record, policy, today="2026-11-18")
+```
+
+```text
+agent's proposed write                       FAIL
+   - 'personal_email' is a personal email (gmail.com) — needs consent, not legitimate interest
+   - 'funding_stage' has no source — the next email can't cite it
+   - 'founder_religion' may never be stored (minimisation / protected attribute)
+```
+
+**Why it matters:** a field with no source becomes an invented personalisation two steps later. Personal contact details need consent, not legitimate interest. Protected attributes are never stored, whatever the field is called.
+
 ## How the deployment gate decides
 
 Every automation gets a short YAML manifest (lane, actions, data used, owner, evidence). The gate rules on it:
@@ -273,6 +348,15 @@ Clyve teardown outreach  →  PILOT ONLY
 ```
 
 The second verdict is deliberate: Clyve's own outreach is safe and ethical by design, but it stays PILOT ONLY (a human checks every send) until it has 30 real labelled cases behind it.
+
+Each manifest names its **lane**, and every lane has guards it must wire in, or the gate blocks it:
+
+| Lane | Required guards | Also checked |
+|---|---|---|
+| `marketing_automation` | automation_guard · pii_guard · injection_guard · manipulation_guard | bot replies disclose they're automated and reach a human |
+| `gtm_engineering` | outreach_guard · promise_guard · pii_guard · injection_guard · manipulation_guard | CRM writes go through enrichment_guard |
+| `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard | every publish has a recorded approval and a preview |
+| `ai_seo` (was `ai_visibility`) | ai_seo_guard · visibility_stats · promise_guard | reports can't promise citations or rankings |
 
 Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
 
@@ -346,11 +430,14 @@ Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `
 | `claims_gate` | every number traces to a proven claim; every ₹/Rs/INR figure is stamped; assumed figures are ranges |
 | `promise_guard` | outcome, ranking and timeline promises (negations like "we can't guarantee" pass) |
 | `manipulation_guard` | false urgency/scarcity, fear, guilt → escalate to a human |
-| `outreach_guard` | lawful basis, suppression, channel opt-in, unsubscribe, sender auth, ICP exclusions, sourced + fresh personalisation, undeclared facts, private metrics before intake, caps; `deliverability()` stop rules |
+| `outreach_guard` | lawful basis, suppression, channel opt-in, unsubscribe, sender auth, ICP exclusions, sourced + fresh personalisation, undeclared facts, private metrics before intake, daily caps per inbox and per channel (InMail, LinkedIn, Instagram DMs, WhatsApp); `deliverability()` stop rules |
 | `automation_guard` | tenant isolation, consent at send, idempotency, frequency caps, quiet hours, mixed-content = promotional, audience-size sanity; replies are allowlisted |
 | `injection_guard` | flags instruction-like text; `wrap()` marks scraped/inbound text as untrusted data |
 | `pii_guard` | email, Indian mobile, PAN, Aadhaar; `redact()` / `restore()` around model calls |
 | `visibility_stats` | frozen prompt-set hash, no blended numbers, app vs API separation, `real_change()` (noise + chance band), `smallest_provable_move()` |
+| `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt, answer vs training crawlers), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()` |
+| `claim_safety_guard` | regulated categories (food, supplements, health, personal care): prohibited claims block, claims that need proof escalate; superlatives and named competitors need proof in any category |
+| `enrichment_guard` | CRM writes: every field sourced, dated, fresh and confident; forbidden fields and protected attributes never stored; personal contact details need consent; no PII in free text |
 | `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget |
 | `gate` | the deployment gate above |
 | `judges` | 6 LLM-judge templates: swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check |
@@ -461,7 +548,7 @@ tests/                unit/ · integration/ · system/ (see TESTING.md)
 
 ## Testing
 
-426 tests in three layers: **unit** (329, every guard and gate rule), **integration** (79, every CLI command, the full pipeline, label sheet → gate) and **system** (18, the built wheel in a fresh venv, plus the container). Coverage is 99% and CI fails below 95%. No test calls a real model.
+573 tests in three layers: **unit** (462, every guard and gate rule), **integration** (91, every CLI command, the full pipeline, label sheet → gate) and **system** (20, the built wheel in a fresh venv, plus the container). Coverage is 99% and CI fails below 95%. No test calls a real model.
 
 ```bash
 python -m pytest              # unit + integration

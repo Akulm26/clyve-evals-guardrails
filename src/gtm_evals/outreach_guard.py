@@ -13,6 +13,7 @@ lead = {
   "signals": [{"fact": str, "source_url": str, "date": "YYYY-MM-DD"}],
 }
 context = {"today": "YYYY-MM-DD", "suppression": set(), "sent_today_by_inbox": {inbox: n},
+           "sent_today_by_channel": {"inmail": n, "instagram_dm": n, ...},   # this sender account, today
            "sender_auth": {"spf": True, "dkim": True, "dmarc": True}}
 """
 from __future__ import annotations
@@ -87,6 +88,10 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
     inbox = message.get("inbox")
     if inbox and context.get("sent_today_by_inbox", {}).get(inbox, 0) >= cfg["daily_cap_per_inbox"]:
         v.append(f"daily cap reached for {inbox}")
+    cap = cfg.get("daily_cap_per_channel", {}).get(channel)
+    sent = context.get("sent_today_by_channel", {}).get(channel, 0)
+    if cap is not None and sent >= cap:
+        v.append(f"daily {channel} cap reached ({sent}/{cap}) — protects the sender account")
 
     return Verdict.from_violations("outreach_guard", v)
 

@@ -5,8 +5,8 @@
 """
 import os
 
-from gtm_evals import (ActionGate, automation_guard, claims_gate, injection_guard, load_policy,
-                       outreach_guard, pii_guard, promise_guard, visibility_stats)
+from gtm_evals import (ActionGate, ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, enrichment_guard,
+                       injection_guard, load_policy, outreach_guard, pii_guard, promise_guard, visibility_stats)
 
 P = load_policy(profile="clyve")
 
@@ -117,3 +117,34 @@ for qt in ("niche", "brand"):
     r = visibility_stats.real_change(rows, "day0", "day30", qt, P)
     print(f"{qt:<6} {r['before']:.0%} → {r['after']:.0%}  (noise ±{r['noise']:.0%}, band ±{r['z_band']:.0%})  {r['verdict']}")
 print(f"smallest move 75 runs can prove: {visibility_stats.smallest_provable_move(75):.0%}")
+
+# 7. AI SEO: can AI search reach, read and recognise the brand? ------------------------
+section("7. AI SEO: crawlers, raw HTML, schema, one entity")
+robots = "User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nDisallow: /products/\n"
+show("robots.txt (product pages)", ai_seo_guard.crawler_access(robots, P, path="/products/chai-masala"))
+print("training crawlers allowed:", {b: ok for b, ok in ai_seo_guard.training_access(robots, P).items() if b in ("GPTBot", "ClaudeBot")})
+spa = '<html><head><title>Chai Masala</title></head><body><div id="root"></div><script src="/app.js"></script></body></html>'
+show("product page as served", ai_seo_guard.check_page(spa, P, must_contain=["winter chai masala"], required_schema=["Organization", "Product"]))
+canonical = {"name": "Example Masala", "description": "Stone-ground spice blends from Ludhiana, made in small batches"}
+show("brand across channels", ai_seo_guard.entity_consistency({
+    "website": {"name": "Example Masala", "description": "Stone-ground spice blends from Ludhiana, made in small batches."},
+    "linkedin": {"name": "Example Foods Pvt Ltd", "description": "Stone-ground spice blends from Ludhiana, made in small batches"},
+    "google_business": {"name": "Example Masala", "description": "Best online grocery store for all your needs"}}, canonical, P))
+
+# 8. ContentOps: regulated claims in a food brand's post --------------------------------
+section("8. ContentOps: regulated claims (food)")
+show("AI draft for a masala brand", claim_safety_guard.check(
+    "Our haldi masala cures colds and is clinically proven to boost immunity. India's No. 1 masala brand!", "spice", P))
+show("after the approver's edit", claim_safety_guard.check(
+    "Our haldi masala is stone-ground every week in Ludhiana. Rated 4.6 by 2,140 buyers.", "spice", P))
+
+# 9. GTM engineering: what an enrichment agent writes to the CRM ------------------------
+section("9. GTM: enrichment agent writing to the CRM")
+src = "https://www.facebook.com/ads/library/?id=1"
+record = {"tenant_id": "a", "workflow_tenant_id": "a", "lawful_basis": "legitimate_interest", "fields": {
+    "company": {"value": "Example Masala", "source": src, "date": "2026-11-10", "confidence": 0.95},
+    "work_email": {"value": "rhea@examplemasala.in", "source": src, "date": "2026-11-10"},
+    "personal_email": {"value": "rhea.k@gmail.com", "source": src, "date": "2026-11-10"},
+    "funding_stage": {"value": "Seed", "date": "2026-10-01"},
+    "founder_religion": {"value": "…", "source": src, "date": "2026-11-10"}}}
+show("agent's proposed write", enrichment_guard.check_write(record, P, today="2026-11-18"))

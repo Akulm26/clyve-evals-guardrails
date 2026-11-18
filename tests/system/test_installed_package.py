@@ -23,6 +23,7 @@ class TestArtifacts:
         must = ["gtm_evals/py.typed", "gtm_evals/data/default.yaml", "gtm_evals/data/profiles/clyve.yaml",
                 "gtm_evals/data/templates/gtm-evals.yaml", "gtm_evals/data/templates/evals/golden.jsonl",
                 "gtm_evals/data/templates/evals/judge_labels.csv", "gtm_evals/data/templates/workflows/outreach.yaml",
+                "gtm_evals/ai_seo_guard.py", "gtm_evals/claim_safety_guard.py", "gtm_evals/enrichment_guard.py",
                 *[f"gtm_evals/data/judges/{j}.md" for j in ("swap_test", "on_thesis", "personalisation_factuality",
                                                              "claim_safety", "description_accuracy", "promise_check")]]
         assert not [m for m in must if m not in names]
@@ -63,7 +64,7 @@ class TestNewUserJourney:
         assert "made  gtm-evals.yaml" in gtm("init", check_code=0).stdout
 
         out = gtm("eval", "evals/golden.jsonl", check_code=0).stdout
-        assert "10 cases" in out and "❌" not in out
+        assert "13 cases" in out and "❌" not in out
 
         (project / "draft.txt").write_text("We guarantee you'll rank #1. Trusted by 50,000 brands.", encoding="utf-8")
         out = gtm("check", "draft.txt", "--register", "claims_register.json", check_code=1).stdout
@@ -74,6 +75,16 @@ class TestNewUserJourney:
         wf = project / "workflows" / "outreach.yaml"
         wf.write_text(wf.read_text().replace('owner: ""', 'owner: "me"').replace('human_approver: ""', 'human_approver: "me"'))
         assert "PILOT ONLY" in gtm("gate", "workflows/outreach.yaml", check_code=0).stdout
+
+    def test_ai_seo_check_on_saved_files(self, gtm, project):
+        (project / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
+        (project / "page.html").write_text('<html><head><title>x</title></head><body><div id="root"></div></body></html>')
+        r = gtm("seo", "page.html", "--robots", "robots.txt")
+        assert r.returncode == 1 and "PerplexityBot is blocked" in r.stdout and "JavaScript" in r.stdout
+
+    def test_regulated_claims_from_stdin(self, gtm):
+        r = gtm("check", "-", "--category", "supplement", input="Clinically proven immunity booster.")
+        assert r.returncode == 1 and "claim_safety_guard" in r.stdout
 
     def test_stdin_and_json(self, gtm):
         r = gtm("check", "-", "--json", input="Only 2 slots left!")

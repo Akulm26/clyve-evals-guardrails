@@ -4,6 +4,8 @@
     gtm-evals gate workflows/*.yaml      DEPLOYABLE / PILOT ONLY / BLOCKED per workflow
     gtm-evals eval evals/*.jsonl         score the guards on your golden sets
     gtm-evals check draft.txt            run text guards on a draft (claims, promises, pressure, PII, injection)
+                                         --category food adds the regulated-claims check
+    gtm-evals seo page.html              AI SEO: crawler access, readable without JS, schema, entity consistency
     gtm-evals visibility runs.jsonl      did AI visibility really move? (noise + chance bands)
     gtm-evals judge list|render|labels|status|calibrate
     gtm-evals policy --show              print the effective policy
@@ -17,7 +19,8 @@ import sys
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, claims_gate, injection_guard, judges, manipulation_guard, pii_guard, promise_guard, visibility_stats
+from . import (__version__, ai_seo_guard, claim_safety_guard, claims_gate, injection_guard, judges, manipulation_guard,
+               pii_guard, promise_guard, visibility_stats)
 from .core import combine, list_profiles, load_policy
 from .gate import check as gate_check
 from .gate import report as gate_report
@@ -98,6 +101,8 @@ def cmd_check(a):
     vs = [promise_guard.check(text, p), manipulation_guard.check(text, p), pii_guard.check(text), injection_guard.check(text)]
     if reg is not None:
         vs.insert(0, claims_gate.check(text, reg, p))
+    if a.category or a.competitor:
+        vs.append(claim_safety_guard.check(text, a.category, p, a.competitor))
     v = combine(*vs)
     if a.json:
         print(json.dumps(v.to_dict(), indent=1, ensure_ascii=False))
@@ -108,6 +113,44 @@ def cmd_check(a):
         if reg is None:
             print("   (no --register given, so numbers were not checked against a claims register)")
     return 0 if v else 1
+
+
+def cmd_seo(a):
+    p = _policy(a)
+    read = lambda f: Path(f).read_text(encoding="utf-8")
+    sections, ok = [], True
+    if a.robots:
+        r = read(a.robots)
+        v = ai_seo_guard.crawler_access(r, p, a.path)
+        sections.append(("AI search crawlers", v))
+        train = ai_seo_guard.training_access(r, p, a.path)
+        blocked = [b for b, allowed in train.items() if not allowed]
+        sections.append(("training crawlers (client's choice, not a failure)",
+                         f"blocked: {', '.join(blocked)}" if blocked else "all allowed"))
+    if a.page:
+        html = read(a.page)
+        sections.append(("readable without JavaScript", ai_seo_guard.raw_html(html, p, a.must)))
+        types = [t.strip() for t in a.schema.split(",")] if a.schema else None
+        sections.append(("schema (JSON-LD)", ai_seo_guard.schema(html, p, types)))
+    if a.entity:
+        d = json.loads(read(a.entity))
+        sections.append(("entity consistency", ai_seo_guard.entity_consistency(d["profiles"], d["canonical"], p)))
+    if not sections:
+        print(f"{NO} give a page, --robots or --entity (see: gtm-evals seo --help)", file=sys.stderr)
+        return 2
+    if a.json:
+        print(json.dumps({t: (v.to_dict() if hasattr(v, "to_dict") else v) for t, v in sections}, indent=1, ensure_ascii=False))
+    for title, v in sections:
+        if isinstance(v, str):
+            if not a.json:
+                print(f"  ℹ️  {title}: {v}")
+            continue
+        ok &= bool(v)
+        if not a.json:
+            print(f"  {OK if v else NO} {title}")
+            for x in v.violations:
+                print(f"     - {x}")
+    return 0 if ok else 1
 
 
 def cmd_visibility(a):
@@ -218,7 +261,16 @@ def main(argv=None):
     p = sub.add_parser("init", help="scaffold config, a workflow manifest and a golden set"); p.add_argument("dir", nargs="?", default="."); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_init)
     p = sub.add_parser("gate", help="rule workflows DEPLOYABLE / PILOT ONLY / BLOCKED"); p.add_argument("manifests", nargs="+"); p.add_argument("--base", help="resolve golden-set paths from here"); p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_gate)
     p = sub.add_parser("eval", help="score guards on golden sets"); p.add_argument("golden", nargs="+"); common(p); p.set_defaults(fn=cmd_eval)
-    p = sub.add_parser("check", help="run text guards on a draft ('-' for stdin)"); p.add_argument("file"); p.add_argument("--register", help="claims register JSON"); p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_check)
+    p = sub.add_parser("check", help="run text guards on a draft ('-' for stdin)"); p.add_argument("file"); p.add_argument("--register", help="claims register JSON"); p.add_argument("--json", action="store_true")
+    p.add_argument("--category", help="product category, e.g. food or skincare: adds the regulated-claims check")
+    p.add_argument("--competitor", action="append", help="a competitor's name; naming one needs proof"); common(p); p.set_defaults(fn=cmd_check)
+    p = sub.add_parser("seo", help="AI SEO: crawler access, readable without JS, schema, entity consistency")
+    p.add_argument("page", nargs="?", help="a saved HTML page (as served, before JavaScript)"); p.add_argument("--robots", help="the site's robots.txt")
+    p.add_argument("--path", default="/", help="URL path checked against robots.txt (default /)")
+    p.add_argument("--must", action="append", help="a phrase that must be in the raw HTML (repeatable)")
+    p.add_argument("--schema", help="required schema types, comma-separated (default from policy: Organization)")
+    p.add_argument("--entity", help='JSON: {"canonical": {...}, "profiles": {channel: {name, description}}}')
+    p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_seo)
     p = sub.add_parser("visibility", help="did AI visibility really move?"); p.add_argument("runs"); p.add_argument("--before", default="day0"); p.add_argument("--after", default="day30"); p.add_argument("--engine"); common(p); p.set_defaults(fn=cmd_visibility)
     p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
     p.add_argument("--rows", type=int, default=30, help="labels: number of blank rows"); p.add_argument("--force", action="store_true")

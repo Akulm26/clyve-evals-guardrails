@@ -32,3 +32,15 @@ draft
 - If the draft needs a fact the register doesn't have → **don't write it.** Raise an evidence request to the founder (proof-first tree: have → write, gettable → sprint, none → skip).
 - If the approver edits the same kind of line three times → add a rule to the playbook and a row to the golden set.
 - If the swap-test judge and the approver disagree more than ~15% of the time → recalibrate the judge before trusting it again.
+
+
+## Added in 0.1.1
+
+| Failure | Guard |
+|---|---|
+| A food, supplement, health or personal-care post makes a claim it can't make ("cures", "treats diabetes", "no side effects") | `claim_safety_guard`: blocks |
+| A claim that needs proof the approver hasn't seen ("clinically proven", "immunity booster", "100% natural", "India's No. 1", naming a competitor) | `claim_safety_guard`: escalates to the approver |
+| Scraped reviews or customer quotes steer the content engine, or carry personal data into a post | `injection_guard` and `pii_guard` are now required in this lane |
+| A post goes live without a recorded sign-off | the gate needs `approval_log` for any `publish` action, and a preview (`preview_before_publish: true`) in place of a canary |
+
+`gtm-evals check draft.txt --category food --competitor "Brand X"` runs the regulated-claims pass from the command line. Patterns follow the ASCI code and FSSAI advertising rules as a starting point; they're not legal advice, so review them per category.

@@ -4,7 +4,7 @@ owner: Akul
 lane: gtm_engineering
 status: pilot
 actions: [score_lead, crm_update, send_single, send_bulk]
-guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate]
+guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate, enrichment_guard]
 judges:
   - template: personalisation_factuality
     labels: evals/labels/personalisation_factuality.csv   # filled from the labelling sheet

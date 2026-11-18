@@ -74,11 +74,69 @@ class TestCheck:
         assert "'measure'" in out and "'guarantee'" not in out   # lists replace, not merge
 
 
+class TestCheckCategory:
+    def test_regulated_claims_added_with_category(self, run_cli, tmp_path):
+        d = tmp_path / "d.txt"; d.write_text("Our kadha cures colds. Clinically proven.", encoding="utf-8")
+        assert run_cli("check", d)[0] == 0                       # no category: health rules don't apply
+        code, out, _ = run_cli("check", d, "--category", "food")
+        assert code == 1 and "[claim_safety_guard] prohibited for 'food': 'cures'" in out and "escalate" in out
+
+    def test_competitor_flag(self, run_cli, tmp_path):
+        d = tmp_path / "d.txt"; d.write_text("Fresher than Everest.", encoding="utf-8")
+        code, out, _ = run_cli("check", d, "--competitor", "Everest")
+        assert code == 1 and "names competitor Everest" in out
+
+
+class TestSeo:
+    WORDS = " ".join(["Stone-ground winter chai masala from Ludhiana, made in small batches."] * 15)
+
+    def files(self, tmp_path, robots="User-agent: *\nAllow: /\n", body=None, ld=True):
+        (tmp_path / "robots.txt").write_text(robots, encoding="utf-8")
+        org = ('<script type="application/ld+json">{"@type":"Organization","name":"X","url":"https://x.in",'
+               '"logo":"https://x.in/l.png","sameAs":["https://instagram.com/x"]}</script>') if ld else ""
+        html = (f'<html><head><title>Chai</title><link rel="canonical" href="https://x.in/chai">{org}</head>'
+                f'<body>{body if body is not None else "<p>" + self.WORDS + "</p>"}</body></html>')
+        (tmp_path / "p.html").write_text(html, encoding="utf-8")
+        return tmp_path / "p.html", tmp_path / "robots.txt"
+
+    def test_clean_site(self, run_cli, tmp_path):
+        page, robots = self.files(tmp_path)
+        code, out, _ = run_cli("seo", page, "--robots", robots, "--must", "winter chai masala")
+        assert code == 0 and out.count("✅") == 3 and "training crawlers" in out and "all allowed" in out
+
+    def test_blocked_and_js_only(self, run_cli, tmp_path):
+        page, robots = self.files(tmp_path, robots="User-agent: *\nDisallow: /products/\n", body='<div id="root"></div>', ld=False)
+        code, out, _ = run_cli("seo", page, "--robots", robots, "--path", "/products/chai", "--schema", "Organization,Product")
+        assert code == 1 and "OAI-SearchBot is blocked from /products/chai" in out
+        assert "words readable without JavaScript" in out and "no Product schema" in out
+
+    def test_training_block_is_info_not_failure(self, run_cli, tmp_path):
+        _, robots = self.files(tmp_path, robots="User-agent: GPTBot\nDisallow: /\n")
+        code, out, _ = run_cli("seo", "--robots", robots)
+        assert code == 0 and "blocked: GPTBot" in out
+
+    def test_entity_file(self, run_cli, tmp_path):
+        e = tmp_path / "e.json"
+        e.write_text(json.dumps({"canonical": {"name": "Example Masala", "description": "spice blends from Ludhiana"},
+                                 "profiles": {"linkedin": {"name": "Example Foods", "description": "spice blends from Ludhiana"}}}))
+        code, out, _ = run_cli("seo", "--entity", e)
+        assert code == 1 and "linkedin: name 'Example Foods'" in out
+
+    def test_json(self, run_cli, tmp_path):
+        page, robots = self.files(tmp_path)
+        d = json.loads(run_cli("seo", page, "--robots", robots, "--json")[1])
+        assert d["AI search crawlers"]["passed"] and "schema (JSON-LD)" in d
+
+    def test_nothing_to_check(self, run_cli):
+        code, _, err = run_cli("seo")
+        assert code == 2 and "give a page" in err
+
+
 class TestEval:
     def test_bundled_golden_set_passes(self, run_cli, tmp_path):
         run_cli("init")
         code, out, _ = run_cli("eval", "evals/golden.jsonl")
-        assert code == 0 and "10 cases (0 real)" in out
+        assert code == 0 and "13 cases (0 real)" in out
 
     def test_failing_guard_exits_1(self, run_cli, tmp_path):
         g = tmp_path / "g.jsonl"
@@ -86,6 +144,12 @@ class TestEval:
                      encoding="utf-8")
         code, out, _ = run_cli("eval", g)
         assert code == 1 and "misses: ['x']" in out
+
+    def test_lane_golden_set_meets_thresholds(self, run_cli, root):
+        code, out, _ = run_cli("eval", root / "evals/lanes.jsonl")
+        assert code == 0, out
+        for g in ("ai_seo_crawlers", "ai_seo_page", "ai_seo_entity", "claim_safety", "enrichment"):
+            assert f"✅ {g}" in out
 
     def test_wrong_format_is_a_clear_error_not_a_traceback(self, run_cli, root):
         # the repo's own datasets use the older per-guard layout read by evals/run_evals.py
@@ -109,6 +173,12 @@ class TestGate:
                                "--base", root, "--profile", "clyve")
         assert code == 1   # one BLOCKED workflow fails the run
         assert "Clyve teardown outreach  →  PILOT ONLY" in out and "→  BLOCKED" in out
+
+    def test_every_clyve_workflow_is_at_least_pilot(self, run_cli, root):
+        code, out, _ = run_cli("gate", *sorted((root / "workflows").glob("*.yaml")), "--base", root, "--profile", "clyve")
+        assert code == 0 and out.count("→  PILOT ONLY") == 3
+        for name in ("Clyve AI SEO technical check", "Clyve content engine", "Clyve teardown outreach"):
+            assert name in out
 
     def test_pilot_only_does_not_fail_the_run(self, run_cli, root):
         assert run_cli("gate", root / "workflows/teardown-outreach.yaml", "--base", root)[0] == 0

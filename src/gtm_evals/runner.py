@@ -6,6 +6,7 @@ Golden-set format (JSONL, one case per line):
      "expected_pass": false, "source": "real", "why": "invented stat"}
 
 guard ∈ claims | promise | manipulation | injection | pii | outreach | automation_send | automation_reply
+        | claim_safety | enrichment | ai_seo_crawlers | ai_seo_page | ai_seo_entity
 source ∈ real | synthetic  (only "real" rows count toward deployment evidence)
 """
 from __future__ import annotations
@@ -13,7 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import automation_guard, claims_gate, injection_guard, manipulation_guard, outreach_guard, pii_guard, promise_guard
+from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, enrichment_guard, injection_guard,
+               manipulation_guard, outreach_guard, pii_guard, promise_guard)
 from .core import Verdict
 
 
@@ -45,6 +47,17 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return automation_guard.check_send(x["event"], x.get("history", []), policy)
     if g == "automation_reply":
         return automation_guard.check_reply(x["proposed"], x["inbound"], policy)
+    if g == "claim_safety":
+        return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
+    if g == "enrichment":
+        return enrichment_guard.check_write(x["record"], policy, x["today"])
+    if g == "ai_seo_crawlers":
+        return ai_seo_guard.crawler_access(x.get("robots"), policy, x.get("path", "/"))
+    if g == "ai_seo_page":
+        return ai_seo_guard.check_page(x["html"], policy, x.get("robots"), x.get("path", "/"),
+                                       x.get("must_contain"), x.get("schema"))
+    if g == "ai_seo_entity":
+        return ai_seo_guard.entity_consistency(x["profiles"], x["canonical"], policy)
     raise ValueError(f"unknown guard '{g}' in case {row.get('id')}")
 
 

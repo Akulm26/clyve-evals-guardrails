@@ -97,9 +97,50 @@ def test_no_personal_data_skips_data_rules(policy, evidence):
     assert res["verdict"] == "DEPLOYABLE" and not any("lawful basis" in m for _, m in res["ethical"])
 
 
-def test_ai_visibility_lane_needs_no_manipulation_guard(policy, evidence):
-    res = check(make(**evidence, lane="ai_visibility", guards=["visibility_stats"], actions=["report_draft"]), policy)
+AI_SEO = dict(lane="ai_seo", guards=["ai_seo_guard", "visibility_stats", "promise_guard"], actions=["report_draft"],
+              data={"personal_data": False})
+
+
+def test_ai_seo_lane_needs_no_manipulation_guard(policy, evidence):
+    res = check(make(**evidence, **AI_SEO), policy)
     assert res["verdict"] == "DEPLOYABLE", failing(res)
+
+
+def test_old_ai_visibility_name_still_accepted(policy, evidence):
+    assert check(make(**evidence, **dict(AI_SEO, lane="ai_visibility")), policy)["verdict"] == "DEPLOYABLE"
+
+
+@pytest.mark.parametrize("missing", ["ai_seo_guard", "promise_guard"])
+def test_ai_seo_lane_requires_technical_and_promise_guards(missing, policy, evidence):
+    res = check(make(**evidence, **dict(AI_SEO, guards=[g for g in AI_SEO["guards"] if g != missing])), policy)
+    assert res["verdict"] == "BLOCKED" and any(missing in m for m in failing(res))
+
+
+CONTENT = dict(lane="content_ops", actions=["draft", "publish"], approval_log="approvals.jsonl", data={"personal_data": False},
+               guards=["claims_gate", "promise_guard", "manipulation_guard", "claim_safety_guard", "pii_guard", "injection_guard"])
+
+
+def test_content_lane_deployable(policy, evidence):
+    res = check(make(**evidence, **CONTENT), policy)
+    assert res["verdict"] == "DEPLOYABLE", failing(res)
+
+
+@pytest.mark.parametrize("missing", ["claim_safety_guard", "pii_guard", "injection_guard"])
+def test_content_lane_requires_new_guards(missing, policy, evidence):
+    res = check(make(**evidence, **dict(CONTENT, guards=[g for g in CONTENT["guards"] if g != missing])), policy)
+    assert res["verdict"] == "BLOCKED"
+
+
+def test_publish_needs_an_approval_log(policy, evidence):
+    res = check(make(**evidence, **dict(CONTENT, approval_log="")), policy)
+    assert res["verdict"] == "BLOCKED" and any("recorded approval" in m for m in failing(res))
+
+
+def test_gtm_crm_writes_need_enrichment_guard(policy, evidence):
+    res = check(make(**evidence, actions=["crm_update", "send_single"]), policy)
+    assert res["verdict"] == "BLOCKED" and any("enrichment_guard" in m for m in failing(res))
+    ok = check(make(**evidence, actions=["crm_update", "send_single"], guards=GOOD["guards"] + ["enrichment_guard"]), policy)
+    assert ok["verdict"] == "DEPLOYABLE", failing(ok)
 
 
 def test_no_owner_is_pilot(policy, evidence):
@@ -145,3 +186,15 @@ def test_report_lists_every_check(policy, evidence):
     res = check(make(**evidence), policy)
     text = report(res)
     assert "wf  →  DEPLOYABLE" in text and text.count("✅") == len(res["safe"]) + len(res["ethical"]) + len(res["deployable"])
+
+
+def test_publish_preview_counts_as_its_canary(policy, evidence):
+    m = make(**evidence, **dict(CONTENT, actions=["draft", "publish"]), human_approver="Akul", canary_percent=0)
+    assert check(m, policy)["verdict"] == "BLOCKED"
+    m["preview_before_publish"] = True
+    assert check(m, policy)["verdict"] == "DEPLOYABLE", failing(check(m, policy))
+
+
+def test_preview_does_not_excuse_bulk_sends(policy, evidence):
+    m = make(**evidence, canary_percent=0, preview_before_publish=True)   # GOOD has send_bulk
+    assert check(m, policy)["verdict"] == "BLOCKED"

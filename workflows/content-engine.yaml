@@ -1,0 +1,21 @@
+# Clyve content engine (ContentOS E4/E5): drafts from the claims register, published only after the named approver signs off.
+name: Clyve content engine
+owner: Akul
+lane: content_ops
+status: pilot
+actions: [draft, report_draft, publish]
+guards: [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard]
+judges:
+  - template: swap_test
+    calibration: {labelled_cases: 0, agreement: 0}     # Q3 not done yet
+  - template: on_thesis
+    calibration: {labelled_cases: 0, agreement: 0}
+golden_set: evals/datasets/content_drafts.jsonl
+human_approver: Akul
+approval_log: logs/approvals.jsonl          # every publish records who approved which draft
+preview_before_publish: true                # the approver sees the rendered post before it goes live (publish's canary)
+kill_switch: CLYVE_KILL_SWITCH
+token_budget: 150000
+logging: {gate_log: true, retention_days: 365}
+data:
+  personal_data: false
