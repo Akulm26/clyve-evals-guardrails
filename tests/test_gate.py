@@ -45,3 +45,12 @@ def test_manipulation_escalates():
     v = manipulation_guard.check("Only 3 slots left — last chance!", P)
     assert not v and v.escalate
     assert manipulation_guard.check("We take 4 audits a month so each gets proper time.", P)
+
+
+def test_csv_label_sheet_loads(tmp_path):
+    from gtm_evals.runner import load_rows
+    p = tmp_path / "labels.csv"
+    p.write_text("id,text,signals,human_verdict\nL1,hi,S1: x,PASS\nL2,hi,S1: x,\n,,,\n", encoding="utf-8")
+    rows = load_rows(p)
+    assert [r["id"] for r in rows] == ["L1", "L2"]
+    assert rows[0]["human_verdict"] == "pass" and rows[1]["human_verdict"] is None

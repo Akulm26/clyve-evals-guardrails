@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 18 Nov 2026
+- Author credits: Akul S. Malhotra (@Akulm26) in package metadata, NOTICE, CITATION.cff, the Action and the container label.
+- README rewritten around purpose (why it exists, three jobs, who should use it, what it is not) with six concrete examples; `tests/test_tour.py` keeps them in sync with `examples/tour.py`.
+- `load_rows` reads CSV as well as JSONL, so a judge labelling sheet exported from a spreadsheet calibrates directly: `gtm-evals judge calibrate personalisation_factuality labels.csv`.
+- Template `templates/evals/judge_labels.csv` for labelling the personalisation judge.
+
 ## 0.1.0 — 18 Nov 2026
 First release.
 - Guards: claims_gate, promise_guard, manipulation_guard, pii_guard, injection_guard, outreach_guard, automation_guard, visibility_stats, action_gate (risk tiers R0–R3).

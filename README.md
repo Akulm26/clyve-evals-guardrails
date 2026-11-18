@@ -282,11 +282,11 @@ Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
 
 | Route | Command |
 |---|---|
-| **pip (pinned release)** | `pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.0"` |
-| **pip (wheel from the release)** | `pip install https://github.com/Akulm26/clyve-evals-guardrails/releases/download/v0.1.0/gtm_evals-0.1.0-py3-none-any.whl` |
-| **GitHub Action** | `uses: Akulm26/clyve-evals-guardrails@v0.1.0` (see below) |
-| **Docker (GitHub Packages)** | `docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:0.1.0 --help` |
-| **with LLM judges** | add `[judges]`: `pip install "gtm-evals[judges] @ git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.0"` |
+| **pip (pinned release)** | `pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.1"` |
+| **pip (wheel from the release)** | `pip install https://github.com/Akulm26/clyve-evals-guardrails/releases/download/v0.1.1/gtm_evals-0.1.1-py3-none-any.whl` |
+| **GitHub Action** | `uses: Akulm26/clyve-evals-guardrails@v0.1.1` (see below) |
+| **Docker (GitHub Packages)** | `docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:0.1.1 --help` |
+| **with LLM judges** | add `[judges]`: `pip install "gtm-evals[judges] @ git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.1"` |
 
 ## Quickstart
 
@@ -309,11 +309,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Akulm26/clyve-evals-guardrails@v0.1.0
+      - uses: Akulm26/clyve-evals-guardrails@v0.1.1
         with:
           command: gate                 # gate | eval | check
           args: "workflows/*.yaml"
-      - uses: Akulm26/clyve-evals-guardrails@v0.1.0
+      - uses: Akulm26/clyve-evals-guardrails@v0.1.1
         with:
           command: eval
           args: "evals/golden.jsonl"

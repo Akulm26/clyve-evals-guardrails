@@ -22,7 +22,7 @@ from . import (  # noqa: F401
 from .action_gate import ActionGate
 from .core import Verdict, combine, list_profiles, load_policy
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 GUARDS = {
     "claims": claims_gate, "promise": promise_guard, "pii": pii_guard, "injection": injection_guard,

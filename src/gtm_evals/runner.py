@@ -46,7 +46,18 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
 
 
 def load_rows(path: str | Path) -> list[dict]:
-    return [json.loads(x) for x in Path(path).read_text(encoding="utf-8").splitlines() if x.strip()]
+    """JSONL, or CSV (e.g. a labelling sheet exported from a spreadsheet). In CSV, a blank
+    human_verdict means "not labelled yet" and the row is skipped by calibration."""
+    path = Path(path)
+    if path.suffix.lower() == ".csv":
+        import csv
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            rows = [{k.strip(): (v or "").strip() for k, v in r.items() if k} for r in csv.DictReader(f)]
+        for r in rows:
+            hv = r.get("human_verdict", "").lower()
+            r["human_verdict"] = hv if hv in ("pass", "fail") else None
+        return [r for r in rows if any(v for k, v in r.items() if k != "human_verdict")]
+    return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
 
 
 def score(rows: list[dict], policy: dict, base: Path) -> dict:
