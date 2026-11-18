@@ -64,8 +64,57 @@ def calibrate(template: str, rows: list[dict], model: str | None = None) -> dict
     for r in rows:
         if r.get("human_verdict") is None:
             continue  # unlabelled (e.g. blank rows of a labelling sheet): don't spend a model call
+        if not r.get("today") and r.get("date_sent"):
+            r = dict(r, today=r["date_sent"])  # a label sheet's "today" is the day the message went out
         out = run(template, r, model)
         total += 1
         agree += int(out["_verdict"] == r["human_verdict"])
         results.append((r.get("id"), out["_verdict"], r.get("human_verdict")))
     return {"labelled_cases": total, "agreement": agree / total if total else 0.0, "results": results}
+
+
+# ---------- labelling sheets ----------
+LABEL_TAIL = ["human_verdict", "why"]
+
+
+def template_vars(template: str) -> list[str]:
+    """Variables a template needs, in first-use order, with the message text first."""
+    import re
+    seen = []
+    for v in re.findall(r"{{\s*(\w+)\s*}}", template):
+        if v not in seen:
+            seen.append(v)
+    return sorted(seen, key=lambda v: v != "text")
+
+
+def label_columns(template: str) -> list[str]:
+    return ["id", *template_vars(template), *LABEL_TAIL]
+
+
+def blank_label_rows(template: str, n: int = 30, prefix: str = "L", defaults: dict | None = None) -> list[dict]:
+    cols = label_columns(template)
+    return [{c: (f"{prefix}{i:02d}" if c == "id" else (defaults or {}).get(c, "")) for c in cols} for i in range(1, n + 1)]
+
+
+def count_labelled(rows: list[dict]) -> dict:
+    hv = [str(r.get("human_verdict") or "").strip().lower() for r in rows]
+    return {"labelled": sum(v in ("pass", "fail") for v in hv), "pass": hv.count("pass"), "fail": hv.count("fail")}
+
+
+def update_manifest(path, template_name: str, labelled_cases: int, agreement: float) -> bool:
+    """Write a calibration result into a workflow manifest in place, keeping its comments.
+    Returns False if the manifest has no judge entry for this template."""
+    import re
+    from pathlib import Path
+    p = Path(path)
+    lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if re.search(rf"template:\s*{re.escape(template_name)}\b", line):
+            for k in range(i + 1, min(i + 6, len(lines))):
+                m = re.match(r"(\s*)calibration:\s*{[^}]*}(.*)", lines[k].rstrip("\n"))
+                if m:
+                    lines[k] = (f"{m.group(1)}calibration: {{labelled_cases: {labelled_cases}, "
+                                f"agreement: {agreement:.2f}}}     # gtm-evals judge calibrate\n")
+                    p.write_text("".join(lines), encoding="utf-8")
+                    return True
+    return False

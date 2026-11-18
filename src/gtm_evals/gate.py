@@ -88,6 +88,17 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
         cal = j.get("calibration") or {}
         ok = cal.get("labelled_cases", 0) >= g["judge_min_labels"] and cal.get("agreement", 0) >= g["judge_min_agreement"]
         deploy.append((ok, f"judge '{j.get('template')}' calibrated (≥{g['judge_min_labels']} labels, ≥{g['judge_min_agreement']:.0%} agreement)"))
+        if j.get("labels"):
+            lp = next((b / j["labels"] for b in _BASE if (b / j["labels"]).exists()), None)
+            if lp is None:
+                deploy.append((False, f"label file for '{j.get('template')}' exists ({j['labels']})"))
+            else:
+                from .judges import count_labelled
+                from .runner import load_rows
+                have = count_labelled(load_rows(lp))["labelled"]
+                claimed = cal.get("labelled_cases", 0)
+                deploy.append((claimed <= have, f"calibration for '{j.get('template')}' matches its label file "
+                                                f"(claims {claimed}, file has {have} labelled)"))
     deploy.append((bool(manifest.get("owner")), "a named owner"))
 
     if not all(o for o, _ in safe + ethical):

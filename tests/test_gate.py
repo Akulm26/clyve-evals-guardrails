@@ -27,8 +27,33 @@ def test_deployable_when_evidence_real(tmp_path, monkeypatch):
     gs = tmp_path / "real.jsonl"
     gs.write_text("\n".join('{"source": "real"}' for _ in range(30)))
     m["golden_set"] = str(gs)
+    labels = tmp_path / "labels.csv"
+    labels.write_text("id,text,human_verdict\n" + "\n".join(f"L{i},msg,{'pass' if i % 2 else 'fail'}" for i in range(30)))
+    m["judges"][0]["labels"] = str(labels)
     m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9}
     assert check(m, P)["verdict"] == "DEPLOYABLE"
+
+
+def test_calibration_cannot_claim_more_labels_than_the_file_has(tmp_path):
+    m = copy.deepcopy(GOOD)
+    gs = tmp_path / "real.jsonl"
+    gs.write_text("\n".join('{"source": "real"}' for _ in range(30)))
+    m["golden_set"] = str(gs)
+    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9}   # label file in repo is still empty
+    r = check(m, P, base_dir=ROOT)
+    assert r["verdict"] == "PILOT ONLY"
+    assert any("matches its label file" in t and not ok for ok, t in r["deployable"])
+
+
+def test_label_sheet_cli_and_manifest_update(tmp_path):
+    from gtm_evals import judges
+    t = judges.load_template("personalisation_factuality")
+    assert judges.label_columns(t)[:2] == ["id", "text"] and judges.label_columns(t)[-2:] == ["human_verdict", "why"]
+    mf = tmp_path / "wf.yaml"
+    mf.write_text("judges:\n  - template: personalisation_factuality\n    calibration: {labelled_cases: 0, agreement: 0}  # old\n")
+    assert judges.update_manifest(mf, "personalisation_factuality", 34, 0.882)
+    assert "calibration: {labelled_cases: 34, agreement: 0.88}" in mf.read_text()
+    assert not judges.update_manifest(mf, "swap_test", 1, 1.0)
 
 
 def test_protected_attribute_blocks():

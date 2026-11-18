@@ -5,7 +5,7 @@
     gtm-evals eval evals/*.jsonl         score the guards on your golden sets
     gtm-evals check draft.txt            run text guards on a draft (claims, promises, pressure, PII, injection)
     gtm-evals visibility runs.jsonl      did AI visibility really move? (noise + chance bands)
-    gtm-evals judge list|render|calibrate
+    gtm-evals judge list|render|labels|status|calibrate
     gtm-evals policy --show              print the effective policy
 """
 from __future__ import annotations
@@ -54,7 +54,8 @@ def cmd_init(a):
     print("\nNext:\n  1. gtm-evals eval evals/golden.jsonl      score the guards on the sample cases"
           "\n  2. edit workflows/outreach.yaml           set owner and human_approver (blocked until you do)"
           "\n  3. gtm-evals gate workflows/*.yaml        DEPLOYABLE / PILOT ONLY / BLOCKED"
-          "\n  4. add your own real cases to evals/golden.jsonl with \"source\": \"real\"")
+          "\n  4. add your own real cases to evals/golden.jsonl with \"source\": \"real\""
+          "\n  5. gtm-evals judge labels <judge>           a labelling sheet to calibrate an LLM judge")
 
 
 def cmd_gate(a):
@@ -142,9 +143,38 @@ def cmd_judge(a):
         if miss:
             print(f"\n(unfilled: {', '.join(miss)})", file=sys.stderr)
         return 0
+    if a.action == "labels":
+        import csv
+        out = Path(a.dataset or f"evals/labels/{Path(a.template).stem}.csv")
+        if out.exists() and not a.force:
+            print(f"{out} exists — add --force to overwrite")
+            return 1
+        out.parent.mkdir(parents=True, exist_ok=True)
+        defaults = dict(kv.split("=", 1) for kv in (a.vars or []))
+        defaults.setdefault("freshness_days", str(load_policy()["outreach"]["signal_freshness_days"]))
+        rows = judges.blank_label_rows(t, a.rows, defaults=defaults)
+        with out.open("w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=judges.label_columns(t))
+            w.writeheader(); w.writerows(rows)
+        print(f"made {out}: {a.rows} blank rows, columns {', '.join(judges.label_columns(t))}")
+        print("Open it in any spreadsheet, fill one real case per row, set human_verdict to pass or fail, "
+              f"then: gtm-evals judge calibrate {a.template} {out}")
+        return 0
+    if a.action == "status":
+        c = judges.count_labelled(load_rows(a.dataset))
+        ready = c["labelled"] >= 30 and c["pass"] >= 10 and c["fail"] >= 10
+        print(f"{c['labelled']}/30 labelled · {c['pass']} pass · {c['fail']} fail · "
+              + ("ready to calibrate" if ready else "not ready (need 30, with ≥10 pass and ≥10 fail)"))
+        return 0 if ready else 1
     if a.action == "calibrate":
         res = judges.calibrate(t, load_rows(a.dataset), a.model)
         print(f"agreement {res['agreement']:.0%} on {res['labelled_cases']} labelled cases (gate: ≥85% on ≥30)")
+        for rid, got, want in res["results"]:
+            if got != want:
+                print(f"  disagree  {rid}: judge {got}, human {want}")
+        if a.update:
+            ok = judges.update_manifest(a.update, Path(a.template).stem, res["labelled_cases"], res["agreement"])
+            print(f"{'updated' if ok else 'no judge entry for this template in'} {a.update}")
         return 0 if res["labelled_cases"] >= 30 and res["agreement"] >= 0.85 else 1
 
 
@@ -171,13 +201,15 @@ def main(argv=None):
     p = sub.add_parser("eval", help="score guards on golden sets"); p.add_argument("golden", nargs="+"); common(p); p.set_defaults(fn=cmd_eval)
     p = sub.add_parser("check", help="run text guards on a draft ('-' for stdin)"); p.add_argument("file"); p.add_argument("--register", help="claims register JSON"); p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_check)
     p = sub.add_parser("visibility", help="did AI visibility really move?"); p.add_argument("runs"); p.add_argument("--before", default="day0"); p.add_argument("--after", default="day30"); p.add_argument("--engine"); common(p); p.set_defaults(fn=cmd_visibility)
-    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
+    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
+    p.add_argument("--rows", type=int, default=30, help="labels: number of blank rows"); p.add_argument("--force", action="store_true")
+    p.add_argument("--update", metavar="MANIFEST", help="calibrate: write the result into this workflow manifest")
     p.add_argument("--var", dest="vars", action="append", help="key=value"); p.add_argument("--var-file", action="append", help="key=path (file contents become the value)"); p.add_argument("--model"); p.set_defaults(fn=cmd_judge)
     p = sub.add_parser("policy", help="print the effective policy"); p.add_argument("--show", action="store_true"); p.add_argument("--profiles", action="store_true"); common(p); p.set_defaults(fn=cmd_policy)
 
     a = ap.parse_args(argv)
     if a.cmd == "judge" and a.action != "list" and not a.template:
-        ap.error("judge render/calibrate needs a template name (see: gtm-evals judge list)")
+        ap.error("judge render/labels/status/calibrate needs a template name (see: gtm-evals judge list)")
     sys.exit(a.fn(a) or 0)
 
 

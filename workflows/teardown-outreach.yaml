@@ -7,6 +7,7 @@ actions: [score_lead, crm_update, send_single, send_bulk]
 guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate]
 judges:
   - template: personalisation_factuality
+    labels: evals/labels/personalisation_factuality.csv   # filled from the labelling sheet
     calibration: {labelled_cases: 0, agreement: 0}     # Q3 not done yet
 golden_set: evals/datasets/outreach_messages.jsonl
 human_approver: Akul

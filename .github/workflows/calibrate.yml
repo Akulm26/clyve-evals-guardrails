@@ -1,0 +1,41 @@
+name: calibrate
+# Re-run judge calibration when labels change. Needs the ANTHROPIC_API_KEY repo secret;
+# without it the job explains what to do and passes.
+on:
+  push:
+    paths: ["evals/labels/**", "src/gtm_evals/data/judges/**"]
+  workflow_dispatch:
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install ".[judges]"
+      - name: Label status
+        run: |
+          {
+            echo "## Judge labels"
+            for f in evals/labels/*.csv; do
+              t=$(basename "$f" .csv)
+              echo "- \`$t\`: $(gtm-evals judge status "$t" "$f" || true)"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Calibrate
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          echo "## Calibration" >> "$GITHUB_STEP_SUMMARY"
+          for f in evals/labels/*.csv; do
+            t=$(basename "$f" .csv)
+            gtm-evals judge status "$t" "$f" >/dev/null || { echo "- \`$t\`: not enough labels yet, skipped" >> "$GITHUB_STEP_SUMMARY"; continue; }
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            gtm-evals judge calibrate "$t" "$f" | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: No API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "Add an ANTHROPIC_API_KEY repo secret to run calibration in CI. Locally: gtm-evals judge calibrate <judge> <labels.csv> --update <manifest>." >> "$GITHUB_STEP_SUMMARY"

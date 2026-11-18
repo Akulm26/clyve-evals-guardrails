@@ -1,2 +1,2 @@
-id,date_sent,lead,text,signals,today,freshness_days,human_verdict,why
-L01,2026-11-18,Example brand,"Hi Rhea, saw you launched 4 new Meta ads for the winter chai masala range. Worth a 30-minute call?","S1: launched 4 new Meta ads for the winter chai masala range (https://www.facebook.com/ads/library/?id=1, 2026-11-02)",2026-11-18,45,pass,every statement matches S1
+id,text,signals,human_verdict,why,lead,date_sent,today,freshness_days
+L01,"Hi Rhea, saw you launched 4 new Meta ads for the winter chai masala range. Worth a 30-minute call?","S1: launched 4 new Meta ads for the winter chai masala range (https://www.facebook.com/ads/library/?id=1, 2026-11-02)",pass,every statement matches S1,Example brand,2026-11-18,2026-11-18,45

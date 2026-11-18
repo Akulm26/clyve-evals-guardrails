@@ -374,6 +374,24 @@ outreach:
 
 `guard` is one of `claims · promise · manipulation · injection · pii · outreach · automation_send · automation_reply`. Only `"source": "real"` rows count as deployment evidence. Every approver rejection or edit should become a row.
 
+## Calibrate the judges (labelling sheet)
+
+The LLM judges count as evidence only after they agree with a human on your own cases: **≥ 30 labels at ≥ 85% agreement**. You label real messages in a sheet, and gtm-evals measures the judge against you and writes the result into the workflow manifest.
+
+```bash
+gtm-evals judge labels personalisation_factuality      # evals/labels/personalisation_factuality.csv, 30 blank rows
+# …fill it in any spreadsheet: one real message per row, human_verdict = pass | fail…
+gtm-evals judge status personalisation_factuality evals/labels/personalisation_factuality.csv
+gtm-evals judge calibrate personalisation_factuality evals/labels/personalisation_factuality.csv \
+          --update workflows/teardown-outreach.yaml       # writes {labelled_cases, agreement} into the manifest
+```
+
+- Prefer Excel or Google Sheets? Use [docs/templates/judge-labelling-sheet.xlsx](docs/templates/judge-labelling-sheet.xlsx) (dropdown, progress counter, labelling rules), then save the Labels tab as CSV.
+- The gate cross-checks the manifest against the label file, so a hand-typed `agreement: 0.9` with an empty file stays PILOT ONLY.
+- The `calibrate` workflow re-runs on every change to `evals/labels/` when the repo has an `ANTHROPIC_API_KEY` secret.
+
+Full guide: [docs/13-judge-calibration.md](docs/13-judge-calibration.md).
+
 ## How good are the guards? (honest numbers)
 
 | | Result |
@@ -422,6 +440,7 @@ The `docs/` folder is the thinking behind the code:
 10-kpi-formulas.md        76 KPI formulas (generated from kpi/)
 11-simulation-report.md   what was stress-tested, what broke
 12-deployment-gate.md     deployable / safe / ethical
+13-judge-calibration.md   labelling sheet → agreement → manifest
 ```
 
 ## Repo layout
@@ -430,6 +449,7 @@ The `docs/` folder is the thinking behind the code:
 src/gtm_evals/        the library (guards, gate, runner, judges, CLI, bundled policy + templates)
 workflows/            manifests for Clyve's own automations (+ examples/ that must stay BLOCKED)
 evals/datasets/       golden sets for this repo
+evals/labels/         human labels for judge calibration (one CSV per judge)
 sim/                  adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
 kpi/                  Clyve / ContentOS KPI formulas as code
 learn/                break-and-fix exercises
