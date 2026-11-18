@@ -62,6 +62,8 @@ docs/
   09-scope-ladder.md          How GTM engineering + marketing automation enter Clyve, step by step
   10-kpi-formulas.md          All 76 Clyve/ContentOS KPI formulas, generated from kpi/
 kpi/                          KPI formulas as code: one record per metric; renders the KPI page and the markdown
+  11-simulation-report.md     What was stress-tested, what broke, what's still open
+sim/                          Adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
 learn/                        3 hands-on break-and-fix exercises (start here if you're new)
 guardrails/                   Deterministic guards (pure Python, no dependencies)
 policies/clyve_policy.yaml    Every threshold in one file
@@ -97,6 +99,17 @@ No API key needed for the deterministic layer. LLM judges in `evals/judges/` are
 ## License
 
 Apache-2.0. Use it, fork it, ship it. If it helps your team, tell us what broke. That's how the golden sets get better.
+
+## Simulation results (18 Nov 2026)
+
+| | Result |
+|---|---|
+| Held-out adversarial set, code only | 13/25 before fixes → 20/25 after |
+| Held-out, code + judges | 25/25 (judges simulated, not yet calibrated) |
+| End-to-end pipeline scenarios | 8/8 |
+| Bugs found and fixed | 17, including 3 high-severity action-gate bugs |
+
+Full write-up: [docs/11-simulation-report.md](docs/11-simulation-report.md).
 
 ## Honest note on the scores
 

@@ -11,9 +11,11 @@ from .core import Verdict
 
 PATTERNS = {
     "EMAIL": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
-    "AADHAAR": re.compile(r"(?<!\d)\d{4}\s\d{4}\s\d{4}(?!\d)|(?<!\d)\d{12}(?!\d)"),
+    "EMAIL_OBFUSCATED": re.compile(r"[\w.+-]+\s*(\[at\]|\(at\)|\{at\})\s*[\w-]+\s*(\[dot\]|\(dot\)|\{dot\})\s*\w+", re.IGNORECASE),
+    # 4-4-4 with spaces or hyphens always; 12 straight digits only when labelled, so order IDs pass.
+    "AADHAAR": re.compile(r"(?<!\d)\d{4}[\s-]\d{4}[\s-]\d{4}(?!\d)|(?i:aadhaar|aadhar|uid)\D{0,15}(?<!\d)\d{12}(?!\d)"),
     "PHONE_IN": re.compile(r"(?<!\d)(?:\+91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)"),
-    "PAN": re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"),
+    "PAN": re.compile(r"\b[A-Za-z]{5}\d{4}[A-Za-z]\b"),
 }
 
 

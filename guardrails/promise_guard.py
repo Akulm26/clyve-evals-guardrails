@@ -1,15 +1,23 @@
-"""Block lines that are only true when results go well."""
+"""Block lines that are only true when results go well.
+
+A match is ignored when a negation sits just before it ("we can't guarantee rankings"),
+because saying what you won't promise is exactly the honest phrasing we want.
+"""
 from __future__ import annotations
 
 import re
 
 from .core import Verdict
 
+NEGATION = re.compile(r"\b(can't|cannot|can not|won't|will not|don't|do not|never|no one|nobody|not|no)\b[^.!?]{0,40}$", re.IGNORECASE)
+
 
 def check(text: str, policy: dict) -> Verdict:
     violations = []
     for pat in policy["promise"]["banned"]:
-        m = re.search(pat, text, flags=re.IGNORECASE)
-        if m:
+        for m in re.finditer(pat, text, flags=re.IGNORECASE):
+            if NEGATION.search(text[max(0, m.start() - 60):m.start()]):
+                continue
             violations.append(f"promise language: '{m.group(0)}'")
+            break
     return Verdict.from_violations("promise_guard", violations)

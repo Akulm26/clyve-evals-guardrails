@@ -1,0 +1,92 @@
+[
+ {
+  "id": "J01",
+  "template": "promise_check",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J02",
+  "template": "promise_check",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J03",
+  "template": "promise_check",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J04",
+  "template": "promise_check",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J05",
+  "template": "promise_check",
+  "human_verdict": "pass"
+ },
+ {
+  "id": "J06",
+  "template": "claim_safety",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J07",
+  "template": "claim_safety",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J08",
+  "template": "claim_safety",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J09",
+  "template": "claim_safety",
+  "human_verdict": "pass"
+ },
+ {
+  "id": "J10",
+  "template": "personalisation_factuality",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J11",
+  "template": "personalisation_factuality",
+  "human_verdict": "pass"
+ },
+ {
+  "id": "J12",
+  "template": "personalisation_factuality",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J13",
+  "template": "swap_test",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J14",
+  "template": "swap_test",
+  "human_verdict": "pass"
+ },
+ {
+  "id": "J15",
+  "template": "on_thesis",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J16",
+  "template": "on_thesis",
+  "human_verdict": "pass"
+ },
+ {
+  "id": "J17",
+  "template": "description_accuracy",
+  "human_verdict": "fail"
+ },
+ {
+  "id": "J18",
+  "template": "description_accuracy",
+  "human_verdict": "pass"
+ }
+]

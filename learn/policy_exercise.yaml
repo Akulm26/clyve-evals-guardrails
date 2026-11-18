@@ -21,6 +21,10 @@ promise:
     - "\\b(will|we'll|we will) (double|triple|10x|increase|grow|boost) (your )?(revenue|sales|leads|roas)"
     - "\\b100% (accurate|visibility|results)\\b"
     - "\\bovernight\\b"
+    - "\\b(will|we'll|we will)\\s+\\d+\\s?x\\b"
+    - "#\\s?1\\b(\\s+(spot|position|rank|result|answer))?(\\s+(on|in)\\s+(chatgpt|perplexity|gemini|google|ai))?"
+    - "\\b(cited|recommended|ranked|mentioned|featured)\\s+(in|within)\\s+(a|one|two|three|four|six|\\d+)\\s+(day|week|month)s?\\b"
+    - "\\b(the\\s+)?top\\s+(answer|result|recommendation|pick)\\s+(on|in)\\b"
 
 outreach:
   max_words: 160
@@ -31,7 +35,8 @@ outreach:
   unsubscribe_patterns: ["unsubscribe", "opt out", "opt-out", "reply stop", "reply \"stop\""]
   optin_required_for: ["whatsapp", "sms"]
   private_metric_patterns:          # blocked before intake (stage < audit)
-    - "\\byour (conversion rate|cvr|cac|aov|roas|ltv|churn|revenue|margin)s? (is|are|of|at)\\b"
+    - "\\byour (conversion rates?|cvr|cac|aov|roas|ltv|churn|margins?|repeat rate|return rate)\\b"
+    - "\\byour (revenue|sales|orders)\\s+(is|are|of|at|must|looks?|seems?|could|might|'s)\\b"
     - "\\byou(?:'re| are) (losing|burning|spending) ₹?\\s?[\\d,]+ (on|in) (ads|cac)"
   stages_with_private_data: ["audit", "build", "retainer"]
   daily_cap_per_inbox: 30
@@ -47,7 +52,20 @@ automation:
   promotional_types: ["promo", "winback", "abandoned_cart", "launch"]
   max_audience_growth_factor: 3.0
   reply_agent_allowed_actions: ["answer_faq", "share_link", "book_call", "escalate"]
-  escalate_keywords: ["refund", "discount", "% off", "legal", "lawyer", "complaint", "consumer court", "allergy", "side effect"]
+  escalate_keywords: ["refund", "discount", "% off", "percent off", "money back", "chargeback", "paise wapas", "paisa wapas", "paise vapas",
+                      "legal", "lawyer", "complaint", "consumer court", "allergy", "side effect", "reaction", "hospital"]
+  # Allowlist: an inbound message may get an automatic reply ONLY if it matches one of these.
+  # Everything else goes to a human. Safer than a keyword blocklist, which misses new phrasings.
+  reply_auto_ok_patterns:
+    - "\\bwhere (can|do) i (buy|get|find)\\b"
+    - "\\bwhere is my order\\b"
+    - "\\b(track|tracking)\\b"
+    - "\\border status\\b"
+    - "\\b(price|cost|how much)\\b"
+    - "\\b(delivery|shipping) (time|charges?|date)\\b"
+    - "\\bingredients?\\b"
+    - "\\b(store|shop) (hours|timings?|location)\\b"
+  offer_words: ["% off", "percent off", "discount", "coupon", "use code", "sale", "offer", "cashback"]
 
 action_gate:
   tiers:

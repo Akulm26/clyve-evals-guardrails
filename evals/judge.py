@@ -23,6 +23,15 @@ def render(template: str, values: dict) -> tuple[str, str]:
     return fill(sys_part).strip(), fill(user_part).strip()
 
 
+PASS_WORDS = {"pass", "on", "accurate"}  # everything else (fail, adjacent, off, partly, inaccurate, needs_review) is not a pass
+
+
+def normalise(out: dict) -> str:
+    """Map each template's own vocabulary to pass/fail so agreement can be computed."""
+    raw = out.get("verdict", out.get("accuracy", ""))
+    return "pass" if str(raw).lower() in PASS_WORDS else "fail"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("template")
@@ -47,7 +56,7 @@ def main():
                                      messages=[{"role": "user", "content": user}])
         out = msg.content[0].text
         try:
-            verdict = json.loads(out[out.find("{"): out.rfind("}") + 1]).get("verdict")
+            verdict = normalise(json.loads(out[out.find("{"): out.rfind("}") + 1]))
         except json.JSONDecodeError:
             verdict = "unparseable"
         human = row.get("human_verdict")

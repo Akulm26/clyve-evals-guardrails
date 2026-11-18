@@ -36,15 +36,14 @@ class ActionGate:
         if self.tokens_used > self.cfg["max_tokens_per_run"]:
             v.append(f"token budget exceeded ({self.tokens_used})")
         if req["checks"]:
-            failed = [c for c in (checks or []) if not c.passed]
-            if checks is None:
-                v.append(f"{tier} needs deterministic checks; none supplied")
-            v += [f"check failed: {c.guard}: {'; '.join(c.violations) or 'escalate'}" for c in failed]
-        if req["evaluator"] and not evaluator_passed:
+            if not checks:  # None or [] — either way, nothing actually ran
+                v.append(f"{tier} needs deterministic checks; none ran")
+            v += [f"check failed: {c.guard}: {'; '.join(c.violations) or 'escalate'}" for c in (checks or []) if not c.passed]
+        if req["evaluator"] and evaluator_passed is not True:
             v.append(f"{tier} needs an evaluator pass")
-        if req["human"] and not approval_id:
+        if req["human"] and not (approval_id or "").strip():
             v.append(f"{tier} needs a human approval ID")
-        if req["canary"] and canary_done is False:
+        if req["canary"] and canary_done is not True:
             v.append(f"{tier} needs a canary run first (send to 5%, check, then continue)")
 
         return Verdict.from_violations(f"action_gate:{tier}", v)

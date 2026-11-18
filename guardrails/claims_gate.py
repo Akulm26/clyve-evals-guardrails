@@ -13,8 +13,11 @@ from .core import Verdict
 
 _UNIT = r"(?:\s?(?:k|K|L|lakh|lakhs|cr|crore|Cr))?"
 _AMOUNT = r"[\d][\d,]*(?:\.\d+)?" + _UNIT
-RUPEE_RE = re.compile(r"₹\s?" + _AMOUNT + r"(?:\s?(?:–|-|to)\s?₹?\s?" + _AMOUNT + r")?")
-NUMBER_RE = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?(?![\w])")
+_CUR = r"(?:₹|\bRs\.?|\bINR)"
+RUPEE_RE = re.compile(_CUR + r"\s?" + _AMOUNT + r"(?:\s?(?:–|-|to)\s?" + _CUR + r"?\s?" + _AMOUNT + r")?")
+# A number, with an optional shorthand suffix (50k, 1.2L, 2x) so suffixed figures are still caught.
+NUMBER_RE = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?(?:k|K|L|x|X|cr|Cr)?(?![\w])")
+RATING_DENOMINATORS = {"5", "10", "100"}
 
 
 def _norm(n: str) -> str:
@@ -50,6 +53,8 @@ def check(text: str, register: list[dict], policy: dict) -> Verdict:
             continue
         if re.fullmatch(r"\d{4}", n) and lo <= int(n) <= hi:
             continue
+        if n in RATING_DENOMINATORS and text[max(0, m.start() - 1):m.start()] == "/":
+            continue  # "4.6/5": the 5 is the scale, not a claim
         # numbers inside a stamped ₹ estimate are checked by rule 2, not the register
         if _inside_rupee(text, m.start()):
             continue
