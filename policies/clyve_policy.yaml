@@ -96,3 +96,27 @@ visibility:
 evals:
   min_recall_must_block: 0.95
   min_precision: 0.80
+
+manipulation:   # ethics: escalated for a human to verify, never auto-sent
+  patterns:
+    - "\\bonly \\d+ (left|spots?|slots?|seats?)\\b"
+    - "\\b(last|final) chance\\b"
+    - "\\b(ends|expires|closing) (tonight|today|in \\d+ (hours?|minutes?))\\b"
+    - "\\b(everyone|all your competitors) (is|are) (already )?(using|doing)\\b"
+    - "\\byou('ll| will) (regret|lose everything|be left behind)\\b"
+    - "\\bact (now|fast)\\b"
+
+deployment_gate:
+  lanes:                     # guards every workflow in a lane must wire in
+    content_ops:          [claims_gate, promise_guard, manipulation_guard]
+    ai_visibility:        [visibility_stats]
+    gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard]
+    marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard]
+  min_real_golden_cases: 30  # needed before 'deployed'; fewer = pilot only
+  judge_min_labels: 30
+  judge_min_agreement: 0.85
+  min_log_retention_days: 90
+  # Never collected or stored by a Clyve workflow (DPDP minimisation; Clyve memory rules)
+  forbidden_data_fields: [aadhaar, pan, passport, bank_account, card_number, religion, caste, health, sexual_orientation, political_view]
+  # Never used to score, rank or target people (fairness)
+  protected_attributes: [gender, age, religion, caste, ethnicity, race, disability, marital_status, sexual_orientation, pregnancy]

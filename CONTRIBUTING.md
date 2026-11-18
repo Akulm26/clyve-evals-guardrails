@@ -11,3 +11,10 @@ Rules:
 - Thresholds live in `policies/clyve_policy.yaml`, not in code.
 - Guards stay dependency-free and deterministic. Anything needing judgment goes in `evals/judges/` with a ground-truth input.
 - Seeded golden sets are written by the people who wrote the guards, so they score well by design. Treat a perfect score as the floor. The real test is cases from production.
+
+## Adding a new automation
+
+1. Write `workflows/<name>.yaml` (see `docs/12-deployment-gate.md`).
+2. Run `python gate/check_workflow.py workflows/<name>.yaml`.
+3. BLOCKED → fix it before merging. PILOT ONLY → it may run only with a human checking every R2+ action.
+4. Golden-set rows from real work get `"source": "real"`; synthetic rows don't.

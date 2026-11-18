@@ -1,10 +1,26 @@
-# Clyve Guardrails & Evals
+# Clyve Evals & Guardrails
 
 **Open playbook + runnable harness for keeping AI-run marketing systems honest: content ops, AI visibility, GTM engineering and marketing automation.**
 
 Built by [Clyve](https://clyve.io) — *Content Strategy and Engineering. The clear next move.*
 
 ---
+
+## Objective
+
+**Every AI automation and workflow Clyve builds must pass AI evals and guardrails before it runs, so the system is deployable, safe and ethical.**
+
+| | Means | Enforced by |
+|---|---|---|
+| **Deployable** | There's real evidence it works: real golden cases, calibrated judges, a named owner | `evals/`, `gate/check_workflow.py` |
+| **Safe** | It can't do damage at scale: risk tiers, required guards, kill switch, approval + canary for bulk actions, logs, budgets | `guardrails/`, `action_gate` |
+| **Ethical** | It's honest and fair to the people it touches: no invented facts or promises, consent and privacy (DPDP), no protected attributes in targeting, no manipulation, a human always reachable | `guardrails/`, `policies/clyve_policy.yaml`, the gate |
+
+Every workflow ships with a manifest in `workflows/`. The gate rules it **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED** ([docs/12-deployment-gate.md](docs/12-deployment-gate.md)), and CI fails the build if anything is blocked.
+
+```bash
+python gate/check_workflow.py workflows/*.yaml
+```
 
 ## The one idea
 
@@ -63,6 +79,9 @@ docs/
   10-kpi-formulas.md          All 76 Clyve/ContentOS KPI formulas, generated from kpi/
 kpi/                          KPI formulas as code: one record per metric; renders the KPI page and the markdown
   11-simulation-report.md     What was stress-tested, what broke, what's still open
+  12-deployment-gate.md       Deployable / safe / ethical: the gate every workflow must pass
+gate/                         check_workflow.py — rules a workflow DEPLOYABLE, PILOT ONLY or BLOCKED
+workflows/                    One manifest per Clyve automation (+ examples/ that must stay BLOCKED)
 sim/                          Adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
 learn/                        3 hands-on break-and-fix exercises (start here if you're new)
 guardrails/                   Deterministic guards (pure Python, no dependencies)
@@ -77,8 +96,8 @@ tests/                        pytest suite
 ## Quickstart
 
 ```bash
-git clone https://github.com/<you>/clyve-guardrails-evals
-cd clyve-guardrails-evals
+git clone https://github.com/Akulm26/clyve-evals-guardrails
+cd clyve-evals-guardrails
 python -m pip install pyyaml pytest
 python -m pytest -q                 # unit tests for every guard
 python evals/run_evals.py           # guard catch-rate report against golden sets

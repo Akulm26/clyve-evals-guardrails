@@ -56,8 +56,8 @@ INJECTION = [
 ]
 PII = [
     ("Aadhaar 1234-5678-9012", "block", "Aadhaar with hyphens"),
-    ("call +919814012345", "block", "phone no spaces"),
-    ("reach rhea [at] gharkamasala [dot] com", "block", "obfuscated email"),
+    ("call +919000000001", "block", "phone no spaces"),
+    ("reach rhea [at] examplemasala [dot] com", "block", "obfuscated email"),
     ("Order ID 202611180001 shipped", "pass", "12-digit order id is not Aadhaar"),
     ("Pin code 160017, Chandigarh", "pass", "pin code"),
 ]
