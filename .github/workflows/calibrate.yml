@@ -38,4 +38,6 @@ jobs:
           done
       - name: No API key
         if: env.ANTHROPIC_API_KEY == ''
-        run: echo "Add an ANTHROPIC_API_KEY repo secret to run calibration in CI. Locally: gtm-evals judge calibrate <judge> <labels.csv> --update <manifest>." >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Add an ANTHROPIC_API_KEY repo secret to run calibration in CI." >> "$GITHUB_STEP_SUMMARY"
+          echo "Locally: gtm-evals judge calibrate <judge> <labels.csv> --update <manifest>" >> "$GITHUB_STEP_SUMMARY"
