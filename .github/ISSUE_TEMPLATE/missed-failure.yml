@@ -1,0 +1,30 @@
+name: A guard missed something
+description: Bad output got through (or good output was blocked). The most useful report you can file.
+labels: [missed-failure]
+body:
+  - type: dropdown
+    id: guard
+    attributes:
+      label: Which guard?
+      options: [claims_gate, promise_guard, manipulation_guard, outreach_guard, automation_guard, injection_guard, pii_guard, visibility_stats, action_gate, deployment gate, a judge template, not sure]
+    validations: { required: true }
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened?
+      options: ["Miss: bad output got through", "False alarm: good output was blocked"]
+    validations: { required: true }
+  - type: textarea
+    id: input
+    attributes:
+      label: The input (anonymised — no real names, emails or phone numbers)
+      render: text
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened, and why?
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: gtm-evals version, placeholder: "gtm-evals --version" }

@@ -7,3 +7,5 @@ First release.
 - CLI: `gtm-evals init | gate | eval | check | visibility | judge | policy`.
 - Six LLM judge templates (swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check).
 - Bundled default policy + `clyve` profile.
+- Distribution: GitHub Release (wheel + sdist), GitHub Action (`uses: Akulm26/clyve-evals-guardrails@v0.1.0`), container on GitHub Packages (`ghcr.io/akulm26/gtm-evals`).
+- Examples: outbound pre-send, content draft, lifecycle send.

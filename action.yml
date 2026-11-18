@@ -1,0 +1,67 @@
+name: "gtm-evals"
+description: "Evals and guardrails for AI GTM engineering: block AI outbound, content and automation workflows that aren't deployable, safe and ethical."
+author: "Akul (Clyve)"
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  command:
+    description: "gate | eval | check"
+    required: false
+    default: "gate"
+  args:
+    description: "Arguments for the command, e.g. 'workflows/*.yaml' or 'evals/golden.jsonl'"
+    required: false
+    default: "workflows/*.yaml"
+  policy:
+    description: "Path to your gtm-evals.yaml (optional; ./gtm-evals.yaml is used if present)"
+    required: false
+    default: ""
+  profile:
+    description: "Optional preset, e.g. clyve"
+    required: false
+    default: ""
+  python-version:
+    description: "Python version to run on"
+    required: false
+    default: "3.12"
+
+outputs:
+  exit-code:
+    description: "0 = passed; 1 = a workflow is BLOCKED, a guard is under threshold, or a draft failed"
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install gtm-evals (the version this action is pinned to)
+      shell: bash
+      run: python -m pip install --quiet "${{ github.action_path }}"
+    - name: Run gtm-evals
+      id: run
+      shell: bash
+      env:
+        CMD: ${{ inputs.command }}
+        ARGS: ${{ inputs.args }}
+        POLICY: ${{ inputs.policy }}
+        PROFILE: ${{ inputs.profile }}
+      run: |
+        set +e
+        EXTRA=()
+        [ -n "$POLICY" ]  && EXTRA+=(--policy "$POLICY")
+        [ -n "$PROFILE" ] && EXTRA+=(--profile "$PROFILE")
+        # shellcheck disable=SC2086
+        gtm-evals "$CMD" $ARGS "${EXTRA[@]}" | tee gtm-evals-report.txt
+        code=${PIPESTATUS[0]}
+        {
+          echo "## gtm-evals $CMD"
+          echo '```'
+          cat gtm-evals-report.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        exit $code

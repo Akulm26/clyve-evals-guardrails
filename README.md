@@ -1,11 +1,24 @@
 # gtm-evals
 
+[![ci](https://github.com/Akulm26/clyve-evals-guardrails/actions/workflows/evals.yml/badge.svg)](https://github.com/Akulm26/clyve-evals-guardrails/actions/workflows/evals.yml)
+[![release](https://img.shields.io/github/v/release/Akulm26/clyve-evals-guardrails?label=release)](https://github.com/Akulm26/clyve-evals-guardrails/releases)
+[![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![container](https://img.shields.io/badge/ghcr.io-akulm26%2Fgtm--evals-purple)](https://github.com/Akulm26/clyve-evals-guardrails/pkgs/container/gtm-evals)
+
 **Evals and guardrails for AI GTM engineering.** Stop your AI outbound, content and marketing automations from inventing facts, making promises, spamming, leaking data or acting without a human, *before* they reach a real person.
 
-```bash
-pip install git+https://github.com/Akulm26/clyve-evals-guardrails     # now
-pip install gtm-evals                                                 # once published to PyPI
-```
+## Install
+
+| Route | Command |
+|---|---|
+| **pip (pinned release)** | `pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.0"` |
+| **pip (wheel from the release)** | `pip install https://github.com/Akulm26/clyve-evals-guardrails/releases/download/v0.1.0/gtm_evals-0.1.0-py3-none-any.whl` |
+| **GitHub Action** | `uses: Akulm26/clyve-evals-guardrails@v0.1.0` (see below) |
+| **Docker (GitHub Packages)** | `docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:0.1.0 --help` |
+| **with LLM judges** | add `[judges]`: `pip install "gtm-evals[judges] @ git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.0"` |
+
+## Quickstart
 
 ```bash
 gtm-evals init                       # config, a workflow manifest, a sample golden set
@@ -13,6 +26,30 @@ gtm-evals check draft.txt            # ❌ promise language: 'guarantee' · unso
 gtm-evals eval evals/golden.jsonl    # recall / precision per guard on your own cases
 gtm-evals gate workflows/*.yaml      # DEPLOYABLE · PILOT ONLY · BLOCKED
 ```
+
+## Use it in your CI (GitHub Action)
+
+Block a merge when any automation in the repo isn't deployable, safe and ethical:
+
+```yaml
+# .github/workflows/gtm-evals.yml
+on: [push, pull_request]
+jobs:
+  gtm-evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Akulm26/clyve-evals-guardrails@v0.1.0
+        with:
+          command: gate                 # gate | eval | check
+          args: "workflows/*.yaml"
+      - uses: Akulm26/clyve-evals-guardrails@v0.1.0
+        with:
+          command: eval
+          args: "evals/golden.jsonl"
+```
+
+The report shows up in the run's summary. The step fails if a workflow is BLOCKED or a guard falls below its recall/precision threshold.
 
 Pure Python, one dependency (`pyyaml`), no API key needed. LLM judges are optional (`pip install "gtm-evals[judges]"`).
 
@@ -117,6 +154,14 @@ outreach:
 
 Pattern-matching code catches what someone thought of in advance. New phrasings get past it, which is why the judge layer exists and why judges must be calibrated on *your* labels before you trust them. Full report: [docs/11-simulation-report.md](docs/11-simulation-report.md).
 
+## Recipes
+
+| File | What it shows |
+|---|---|
+| [examples/outbound_presend.py](examples/outbound_presend.py) | check a cold email before your sending tool sends it |
+| [examples/content_draft.py](examples/content_draft.py) | gate an AI-written post against the brand's claims register, then hand off to the swap-test judge |
+| [examples/lifecycle_send.py](examples/lifecycle_send.py) | quiet hours, consent, and AI auto-replies on WhatsApp |
+
 ## Learn it by breaking it
 
 ```bash
@@ -156,6 +201,9 @@ evals/datasets/       golden sets for this repo
 sim/                  adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
 kpi/                  Clyve / ContentOS KPI formulas as code
 learn/                break-and-fix exercises
+examples/             copy-paste recipes
+action.yml            the GitHub Action
+Dockerfile            the ghcr.io image
 tests/                pytest
 ```
 
