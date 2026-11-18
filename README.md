@@ -40,6 +40,8 @@ The rule underneath: **the more an action costs if it's wrong, and the harder it
 | **GTM engineering** | Signal capture → enrichment → ICP scoring → personalised teardown outreach | Made-up personalisation, wrong person enriched, stale signals, burnt domains, sends without a lawful basis | `outreach_guard`, `pii_guard`, `injection_guard` |
 | **Marketing automation** | Lifecycle email / WhatsApp, CRM sync, AI reply routing, n8n flows | Duplicate sends, consent not synced, AI auto-reply offering discounts, sends at 11pm, one client's data leaking into another's flow | `automation_guard`, `action_gate` |
 
+**How the lanes relate to Clyve's offer:** content ops and AI visibility are the ContentOS core. GTM engineering is the lead-gen pillar, and it also runs Clyve's own teardown outreach. Marketing automation comes in step by step: Clyve's own follow-ups first, then a guard module for flows clients already run, then flows built and handed over during Build. Details in [docs/09-scope-ladder.md](docs/09-scope-ladder.md).
+
 ## Repo map
 
 ```
@@ -57,6 +59,8 @@ docs/
   06-compliance-india.md      DPDP Act + Rules, TRAI, WhatsApp, Gmail/Yahoo bulk-sender rules, ASCI/FSSAI
   07-failure-modes.md         MAST failure taxonomy mapped to marketing systems
   08-operating-cadence.md     What runs per output, per day, per week, per engagement
+  09-scope-ladder.md          How GTM engineering + marketing automation enter Clyve, step by step
+learn/                        3 hands-on break-and-fix exercises (start here if you're new)
 guardrails/                   Deterministic guards (pure Python, no dependencies)
 policies/clyve_policy.yaml    Every threshold in one file
 evals/

@@ -21,6 +21,25 @@ Here the guardrails protect **the measurement itself**. A bad measurement is wor
 
 Run every prompt 3 times. At Day 0 the brand shows up in, say, 30%, 40% and 35% of answers. That 10-point spread is your noise. At Day 30 it's 45%. Is that real? Only if the jump (about 10 points) is bigger than the spread *and* bigger than what chance alone would explain with this many prompts. Otherwise the report says "no clear movement yet." That's an honest finding too.
 
+## How big a set do you need?
+
+The smallest move you can prove depends on how many prompts there are per query type. This assumes 3 runs per prompt, a mention rate near 50%, and runs that agree with each other (real run-to-run spread makes it worse).
+
+| Prompts per query type | Smallest provable move |
+|---|---|
+| 8 | ~28 pts |
+| 10 | ~25 pts |
+| 15 | ~21 pts |
+| 20 | ~18 pts |
+| 30 | ~15 pts |
+| 40 | ~13 pts |
+
+**Implication for A6:** a 20–30 prompt set split across brand / niche / best-X gives about 8–10 prompts per type, which can only prove moves of about 25 points or more. If you need to show smaller wins:
+- **If** brand and niche are where movement is promised → put most of the prompts there (e.g. 20 brand + 20 niche + 10 best-X).
+- **If** the set has to stay small → report small moves as "direction, not yet proven," never as a number.
+
+`learn/` exercise 2 walks through the math.
+
 ## What you can and can't claim
 
 - Brand and niche queries: movement as a direction, typically weeks.

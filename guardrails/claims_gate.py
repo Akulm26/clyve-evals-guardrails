@@ -59,6 +59,14 @@ def check(text: str, register: list[dict], policy: dict) -> Verdict:
         elif status != "have":
             violations.append(f"unproven claim '{raw}' — register status is '{status}'")
 
+    # 1b. Quantities written as words ("fifty thousand kitchens") can't be traced either.
+    if cfg.get("block_number_words"):
+        for w in cfg.get("number_words", []):
+            for m in re.finditer(rf"\b{re.escape(w)}\b", text, flags=re.IGNORECASE):
+                if _inside_rupee(text, m.start()):
+                    continue  # "₹2–4 lakh" — a unit inside a stamped figure, checked by rule 2
+                violations.append(f"quantity written as words '{m.group(0)}' — use a register figure")
+
     # 2. Every ₹ figure stamped; ASSUMED figures must be ranges.
     stamps = cfg["stamps"]
     win = cfg["stamp_window_chars"]
