@@ -10,8 +10,8 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
-authors = [{ name = "Akul S. Malhotra", email = "46711937+Akulm26@users.noreply.github.com" }]
-maintainers = [{ name = "Akul S. Malhotra (@Akulm26)" }]
+authors = [{ name = "Akul Suhail Malhotra", email = "46711937+Akulm26@users.noreply.github.com" }]
+maintainers = [{ name = "Akul Suhail Malhotra (@Akulm26)" }]
 keywords = ["llm", "evals", "guardrails", "gtm", "outbound", "marketing-automation", "ai-safety", "aeo", "geo", "dpdp"]
 classifiers = [
   "Development Status :: 3 - Alpha",

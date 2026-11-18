@@ -5,7 +5,7 @@
 - **ContentOps:** new `claim_safety_guard` for regulated categories (food, supplements, health, personal care); `gtm-evals check --category`. The lane now also requires `claim_safety_guard`, `pii_guard` and `injection_guard`; any `publish` needs an `approval_log`, and a preview counts as its canary.
 - **GTM engineering:** new `enrichment_guard` for CRM writes (sourced, dated, fresh, allowed fields, no protected attributes, consent for personal contact details); per-channel daily caps for InMail, LinkedIn and Instagram DMs in `outreach_guard`. A `gtm_engineering` workflow with `crm_update` must wire in `enrichment_guard`.
 - Golden set `evals/lanes.jsonl` (36 cases) for the new guards; `workflows/ai-seo-technical.yaml` and `workflows/content-engine.yaml` for Clyve's own AI SEO and content work (both PILOT ONLY).
-- Author credits: Akul S. Malhotra (@Akulm26) in package metadata, NOTICE, CITATION.cff, the Action and the container label.
+- Author credits: Akul Suhail Malhotra (@Akulm26) in package metadata, NOTICE, CITATION.cff, the Action and the container label.
 - README rewritten around purpose (why it exists, three jobs, who should use it, what it is not) with six concrete examples; `tests/test_tour.py` keeps them in sync with `examples/tour.py`.
 - `load_rows` reads CSV as well as JSONL, so a judge labelling sheet exported from a spreadsheet calibrates directly: `gtm-evals judge calibrate personalisation_factuality labels.csv`.
 - Template `templates/evals/judge_labels.csv` for labelling the personalisation judge.

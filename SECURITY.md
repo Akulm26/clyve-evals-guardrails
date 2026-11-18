@@ -8,4 +8,4 @@ Especially relevant here:
 - an input that makes a guard crash (a crash must never become a pass)
 - prompt-injection text that survives `injection_guard.wrap()` in a way that changes a judge's verdict
 
-Maintainer: Akul S. Malhotra ([@Akulm26](https://github.com/Akulm26)). We aim to respond within 7 days.
+Maintainer: Akul Suhail Malhotra ([@Akulm26](https://github.com/Akulm26)). We aim to respond within 7 days.

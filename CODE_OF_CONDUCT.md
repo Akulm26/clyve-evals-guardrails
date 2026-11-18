@@ -2,4 +2,4 @@
 
 Be respectful, assume good faith, critique work rather than people, and keep test data free of
 anyone's real personal information. Harassment of any kind isn't tolerated. Maintainers may
-remove content or contributors that break these rules. Report problems privately to the maintainer, Akul S. Malhotra ([@Akulm26](https://github.com/Akulm26)).
+remove content or contributors that break these rules. Report problems privately to the maintainer, Akul Suhail Malhotra ([@Akulm26](https://github.com/Akulm26)).

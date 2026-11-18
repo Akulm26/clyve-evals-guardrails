@@ -45,7 +45,7 @@ class TestInstalled:
 
     def test_metadata_credits_the_author(self, py):
         out = py("from importlib.metadata import metadata as m; d = m('gtm-evals'); print(d['Author-email']); print(d['License-Expression'] or d['License'])").stdout
-        assert "Akul S. Malhotra" in out and "Apache-2.0" in out
+        assert "Akul Suhail Malhotra" in out and "Apache-2.0" in out
 
     def test_imports_from_the_venv_not_the_repo(self, py, env):
         out = py("import gtm_evals, sys; print(gtm_evals.__file__)").stdout

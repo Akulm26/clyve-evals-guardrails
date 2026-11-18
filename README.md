@@ -10,7 +10,7 @@
 
 gtm-evals sits between your AI and your customers. Before a cold email, post, WhatsApp message or auto-reply written by an LLM reaches a real person, it checks for invented facts, promises you can't keep, unsafe health claims, pressure tactics, privacy leaks and missing consent. Before you report AI-search progress to a client, it checks that AI crawlers can reach, read and recognise the site, and that the movement beats noise. Before an automation goes live, it gives the automation a verdict: **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED**.
 
-Created by **[Akul S. Malhotra](https://github.com/Akulm26)**, founder of [Clyve](https://clyve.io), a boutique AI consulting firm (*Content Strategy and Engineering*). It began as the gate for Clyve's own client automations and is open-sourced so anyone shipping AI into GTM can use the same bar.
+Created by **[Akul Suhail Malhotra](https://github.com/Akulm26)**, founder of [Clyve](https://clyve.io), a boutique AI consulting firm (*Content Strategy and Engineering*). It began as the gate for Clyve's own client automations and is open-sourced so anyone shipping AI into GTM can use the same bar.
 
 ```text
 $ gtm-evals check draft.txt --register claims_register.json
@@ -565,10 +565,10 @@ Not legal advice: the compliance mappings help engineers build the right checks.
 
 ## Author
 
-**Akul S. Malhotra** · [@Akulm26](https://github.com/Akulm26) · [LinkedIn](https://linkedin.com/in/malhotraakulsuhail/) · founder, [Clyve](https://clyve.io)
+**Akul Suhail Malhotra** · [@Akulm26](https://github.com/Akulm26) · [LinkedIn](https://linkedin.com/in/malhotraakulsuhail/) · founder, [Clyve](https://clyve.io)
 
 If gtm-evals helps you, a ⭐ on the repo or a citation (see [CITATION.cff](CITATION.cff)) is appreciated.
 
 ## License
 
-Apache-2.0 © 2026 Akul S. Malhotra.
+Apache-2.0 © 2026 Akul Suhail Malhotra.
