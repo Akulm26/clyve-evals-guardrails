@@ -12,11 +12,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 
-from guardrails import load_policy  # noqa: E402
-from guardrails import automation_guard, claims_gate, injection_guard, outreach_guard, pii_guard, promise_guard, visibility_stats  # noqa: E402
-from guardrails.core import combine  # noqa: E402
+from gtm_evals import load_policy  # noqa: E402
+from gtm_evals import automation_guard, claims_gate, injection_guard, outreach_guard, pii_guard, promise_guard, visibility_stats  # noqa: E402
+from gtm_evals.core import combine  # noqa: E402
 
 DATA = ROOT / "evals" / "datasets"
 
@@ -105,7 +105,7 @@ def main():
     ap.add_argument("--lane", choices=[*LANES, "visibility"])
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
-    policy = load_policy()
+    policy = load_policy(profile="clyve")
     all_ok = True
     for name, fn in LANES.items():
         if a.lane in (None, name):

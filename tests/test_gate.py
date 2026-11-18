@@ -5,11 +5,11 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from gate.check_workflow import check  # noqa: E402
-from guardrails import load_policy, manipulation_guard  # noqa: E402
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+from gtm_evals.gate import check  # noqa: E402
+from gtm_evals import load_policy, manipulation_guard  # noqa: E402
 
-P = load_policy()
+P = load_policy(profile="clyve")
 GOOD = yaml.safe_load((ROOT / "workflows/teardown-outreach.yaml").read_text())
 BAD = yaml.safe_load((ROOT / "workflows/examples/bad-lifecycle-flow.yaml").read_text())
 

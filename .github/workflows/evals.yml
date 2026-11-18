@@ -1,16 +1,35 @@
-name: guardrails-evals
+name: ci
 on: [push, pull_request]
 jobs:
   test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.10", "3.12", "3.13"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q
+      - run: python evals/run_evals.py
+      - run: python sim/fuzz.py --strict
+      - run: python sim/pipeline.py
+      - run: gtm-evals gate workflows/*.yaml
+      - run: python sim/holdout.py      # reported, not gating: held-out misses are documented gaps
+
+  install-as-a-user:                   # build the wheel and use it from an empty folder
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install pyyaml pytest
-      - run: python -m pytest -q
-      - run: python evals/run_evals.py
-      - run: python sim/fuzz.py --strict
-      - run: python sim/pipeline.py
-      - run: python gate/check_workflow.py workflows/*.yaml
-      - run: python sim/holdout.py      # reported, not gating: held-out misses are documented gaps
+      - run: pip install build && python -m build
+      - run: |
+          python -m venv /tmp/u && /tmp/u/bin/pip install dist/*.whl
+          mkdir /tmp/p && cd /tmp/p && export PATH=/tmp/u/bin:$PATH
+          gtm-evals --version
+          gtm-evals init
+          gtm-evals eval evals/golden.jsonl
+          echo "We guarantee results." > d.txt && ! gtm-evals check d.txt
+          sed -i 's/owner: ""/owner: "ci"/; s/human_approver: ""/human_approver: "ci"/' workflows/outreach.yaml
+          gtm-evals gate workflows/*.yaml

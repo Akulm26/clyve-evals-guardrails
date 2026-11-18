@@ -1,0 +1,5 @@
+# Clyve profile: founder-led D2C brands in India. Layered on top of default.yaml.
+outreach:
+  excluded_categories: ["trading", "real estate", "directory"]
+action_gate:
+  kill_switch_env: "CLYVE_KILL_SWITCH"

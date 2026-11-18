@@ -13,12 +13,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from guardrails import automation_guard, claims_gate, injection_guard, load_policy, outreach_guard, pii_guard, promise_guard  # noqa: E402
-from guardrails.action_gate import ActionGate  # noqa: E402
-from guardrails.core import Verdict  # noqa: E402
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+from gtm_evals import automation_guard, claims_gate, injection_guard, load_policy, outreach_guard, pii_guard, promise_guard  # noqa: E402
+from gtm_evals.action_gate import ActionGate  # noqa: E402
+from gtm_evals.core import Verdict  # noqa: E402
 
-P = load_policy()
+P = load_policy(profile="clyve")
 REG = json.loads((ROOT / "evals/datasets/claims_register_demo.json").read_text(encoding="utf-8"))
 OUT = [json.loads(x) for x in (ROOT / "evals/datasets/outreach_messages.jsonl").read_text(encoding="utf-8").splitlines() if x]
 BASE = OUT[0]

@@ -5,7 +5,7 @@
 Every workflow ships with a manifest in `workflows/`. The checker reads it and rules:
 
 ```
-python gate/check_workflow.py workflows/<name>.yaml
+gtm-evals gate workflows/<name>.yaml
 
 Any SAFE or ETHICAL test fails? ──YES──▶ BLOCKED      do not run it
         │ NO

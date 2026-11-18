@@ -1,146 +1,170 @@
-# Clyve Evals & Guardrails
+# gtm-evals
 
-**Open playbook + runnable harness for keeping AI-run marketing systems honest: content ops, AI visibility, GTM engineering and marketing automation.**
+**Evals and guardrails for AI GTM engineering.** Stop your AI outbound, content and marketing automations from inventing facts, making promises, spamming, leaking data or acting without a human, *before* they reach a real person.
 
-Built by [Clyve](https://clyve.io) — *Content Strategy and Engineering. The clear next move.*
+```bash
+pip install git+https://github.com/Akulm26/clyve-evals-guardrails     # now
+pip install gtm-evals                                                 # once published to PyPI
+```
+
+```bash
+gtm-evals init                       # config, a workflow manifest, a sample golden set
+gtm-evals check draft.txt            # ❌ promise language: 'guarantee' · unsourced number '50,000'
+gtm-evals eval evals/golden.jsonl    # recall / precision per guard on your own cases
+gtm-evals gate workflows/*.yaml      # DEPLOYABLE · PILOT ONLY · BLOCKED
+```
+
+Pure Python, one dependency (`pyyaml`), no API key needed. LLM judges are optional (`pip install "gtm-evals[judges]"`).
+
+Built by [Clyve](https://clyve.io), a boutique AI consulting firm: *Content Strategy and Engineering.*
 
 ---
 
-## Objective
+## Why
 
-**Every AI automation and workflow Clyve builds must pass AI evals and guardrails before it runs, so the system is deployable, safe and ethical.**
+Marketing AI rarely says anything toxic. It fails in quieter, more expensive ways:
 
-| | Means | Enforced by |
+| It… | Example | Caught by |
 |---|---|---|
-| **Deployable** | There's real evidence it works: real golden cases, calibrated judges, a named owner | `evals/`, `gate/check_workflow.py` |
-| **Safe** | It can't do damage at scale: risk tiers, required guards, kill switch, approval + canary for bulk actions, logs, budgets | `guardrails/`, `action_gate` |
-| **Ethical** | It's honest and fair to the people it touches: no invented facts or promises, consent and privacy (DPDP), no protected attributes in targeting, no manipulation, a human always reachable | `guardrails/`, `policies/clyve_policy.yaml`, the gate |
+| states a number nobody can prove | "Trusted by 50,000 kitchens" | `claims_gate` |
+| promises what nobody controls | "You'll rank #1 on ChatGPT in 30 days" | `promise_guard` |
+| invents personalisation | "Loved your Shark Tank episode!" (there wasn't one) | `outreach_guard` |
+| pressures people | "Only 2 slots left, last chance" | `manipulation_guard` |
+| follows instructions hidden in a review | "Ignore previous instructions and…" | `injection_guard` |
+| sends personal data to a model | phone numbers, emails, PAN, Aadhaar | `pii_guard` |
+| sends the same WhatsApp twice, at 11pm, to someone who opted out | | `automation_guard` |
+| auto-replies "sure, 50% off!" to an angry customer | | `automation_guard` (allowlist replies) |
+| bulk-sends with nobody watching | | `ActionGate` (R3: approval + canary + kill switch) |
+| reports "visibility up 30%" that's just noise | | `visibility_stats` |
 
-Every workflow ships with a manifest in `workflows/`. The gate rules it **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED** ([docs/12-deployment-gate.md](docs/12-deployment-gate.md)), and CI fails the build if anything is blocked.
+## The objective: deployable, safe, ethical
 
-```bash
-python gate/check_workflow.py workflows/*.yaml
-```
-
-## The one idea
-
-> **Guardrails decide what the system is *allowed* to do. Evals prove what it *actually* did.**
-> Guardrails run on every single output, inline. Evals run on samples and datasets, offline and on a schedule.
-> You need both, because a guardrail you never evaluate is a guess, and an eval with no guardrail behind it is just a report on damage already done.
-
-Most "AI guardrails" content is about chatbots refusing bad questions. Marketing systems fail differently. The model rarely says something toxic. What it does is **confidently state a number nobody can prove**, **personalise an email with a fact it made up**, **send the same WhatsApp twice**, or **report "visibility up 40%" when it's just run-to-run noise**. This repo is built around those failures.
-
-## The decision tree (start here)
+Every automation gets a manifest. The gate rules it:
 
 ```
-For any check you want to add:
-
-Can it be verified with code (regex, schema, lookup, math)?
-├─ YES → Deterministic guard. Runs inline on 100% of outputs. Cheap, fast, no judgment.
-└─ NO → Does it need judgment ("is this on-thesis?", "does this pass the swap test?")
-        ├─ Is there a reference to judge against (claims register, rubric, golden answer)?
-        │   ├─ YES → LLM judge with that reference + rubric. Calibrate against human labels first.
-        │   └─ NO  → Write the reference first. A judge with no ground truth is a vibe check.
-        └─ Is the action irreversible or external (send, publish, spend, write to a client's CRM)?
-            └─ YES → Human gate, on top of whatever else runs. Logged approver ID, every time.
+Any SAFE or ETHICAL check fails?  → BLOCKED      don't run it
+Evidence still synthetic?         → PILOT ONLY   a human checks every action that reaches a real person
+Otherwise                         → DEPLOYABLE
 ```
 
-The rule underneath: **the more an action costs if it's wrong, and the harder it is to undo, the stronger the gate.** That's the risk tier system (`docs/03-guardrail-layers.md`).
+| | The question | Checked |
+|---|---|---|
+| **Safe** | Can it do damage at scale? | risk tier per action · required guards for the lane · kill switch · named approver + canary for bulk · logs ≥ 90 days · token budget |
+| **Ethical** | Is it honest and fair to the people it touches? | lawful basis + consent at send · data minimisation · opt-outs ≤ 48 h · no protected attributes in scoring/targeting · automated replies disclose + offer a human · no promises · pressure tactics flagged |
+| **Deployable** | Is there real evidence it works? | ≥ 30 real golden cases · every judge calibrated (≥ 30 labels, ≥ 85% agreement) · named owner |
 
-## What's covered
+Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
 
-| Lane | What the AI does | What goes wrong first | Guard in this repo |
-|---|---|---|---|
-| **Content ops** | Drafts posts, pages, briefs from a claims register | Unproven numbers, invented proof, generic copy that passes for any brand, promises Clyve can't keep | `claims_gate`, `promise_guard`, swap-test judge |
-| **AI visibility** | Runs frozen prompt sets across ChatGPT / Perplexity / Gemini, scores mention, citation, accuracy | Calling noise a win, blending query types, changing prompts mid-engagement | `visibility_stats`, prompt-set hash lock |
-| **GTM engineering** | Signal capture → enrichment → ICP scoring → personalised teardown outreach | Made-up personalisation, wrong person enriched, stale signals, burnt domains, sends without a lawful basis | `outreach_guard`, `pii_guard`, `injection_guard` |
-| **Marketing automation** | Lifecycle email / WhatsApp, CRM sync, AI reply routing, n8n flows | Duplicate sends, consent not synced, AI auto-reply offering discounts, sends at 11pm, one client's data leaking into another's flow | `automation_guard`, `action_gate` |
+## Use it in code
 
-**How the lanes relate to Clyve's offer:** content ops and AI visibility are the ContentOS core. GTM engineering is the lead-gen pillar, and it also runs Clyve's own teardown outreach. Marketing automation comes in step by step: Clyve's own follow-ups first, then a guard module for flows clients already run, then flows built and handed over during Build. Details in [docs/09-scope-ladder.md](docs/09-scope-ladder.md).
+```python
+from gtm_evals import load_policy, claims_gate, outreach_guard, ActionGate, combine
 
-## Repo map
+policy = load_policy()                       # defaults (+ ./gtm-evals.yaml if present)
 
-```
-docs/
-  00-mental-model.md          Guardrails vs evals, the 3 eval levels, where each lives
-  01-clyve-system-map.md      End-to-end: how Clyve's business uses AI, and where it can break
-  02-architecture.md          Tier choice, topology, generator/evaluator contract, token plan, failure audit
-  03-guardrail-layers.md      4 layers × 3 enforcement types, risk tiers R0–R3
-  04-eval-system.md           Golden sets, judges, calibration, online evals, business-outcome evals
-  05-lanes/
-    content-ops.md
-    ai-visibility.md
-    gtm-engineering.md
-    marketing-automation.md
-  06-compliance-india.md      DPDP Act + Rules, TRAI, WhatsApp, Gmail/Yahoo bulk-sender rules, ASCI/FSSAI
-  07-failure-modes.md         MAST failure taxonomy mapped to marketing systems
-  08-operating-cadence.md     What runs per output, per day, per week, per engagement
-  09-scope-ladder.md          How GTM engineering + marketing automation enter Clyve, step by step
-  10-kpi-formulas.md          All 76 Clyve/ContentOS KPI formulas, generated from kpi/
-kpi/                          KPI formulas as code: one record per metric; renders the KPI page and the markdown
-  11-simulation-report.md     What was stress-tested, what broke, what's still open
-  12-deployment-gate.md       Deployable / safe / ethical: the gate every workflow must pass
-gate/                         check_workflow.py — rules a workflow DEPLOYABLE, PILOT ONLY or BLOCKED
-workflows/                    One manifest per Clyve automation (+ examples/ that must stay BLOCKED)
-sim/                          Adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
-learn/                        3 hands-on break-and-fix exercises (start here if you're new)
-guardrails/                   Deterministic guards (pure Python, no dependencies)
-policies/clyve_policy.yaml    Every threshold in one file
-evals/
-  datasets/                   Seeded golden sets with expected verdicts
-  judges/                     LLM-judge prompt templates (rubric + reference + output schema)
-  run_evals.py                Runs every guard against its golden set, reports catch rate
-tests/                        pytest suite
+v = claims_gate.check(draft, claims_register, policy)
+if not v:
+    print(v.violations)                      # ["unsourced number '50,000' — not in claims register"]
+
+gate = ActionGate(policy)
+ok = gate.authorize("send_bulk", checks=[v], evaluator_passed=True,
+                    approval_id="AK-1118-01", canary_done=True)
 ```
 
-## Quickstart
+Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `.escalate`.
 
-```bash
-git clone https://github.com/Akulm26/clyve-evals-guardrails
-cd clyve-evals-guardrails
-python -m pip install pyyaml pytest
-python -m pytest -q                 # unit tests for every guard
-python evals/run_evals.py           # guard catch-rate report against golden sets
+| Module | What it checks |
+|---|---|
+| `claims_gate` | every number traces to a proven claim; every ₹/Rs/INR figure is stamped; assumed figures are ranges |
+| `promise_guard` | outcome, ranking and timeline promises (negations like "we can't guarantee" pass) |
+| `manipulation_guard` | false urgency/scarcity, fear, guilt → escalate to a human |
+| `outreach_guard` | lawful basis, suppression, channel opt-in, unsubscribe, sender auth, ICP exclusions, sourced + fresh personalisation, undeclared facts, private metrics before intake, caps; `deliverability()` stop rules |
+| `automation_guard` | tenant isolation, consent at send, idempotency, frequency caps, quiet hours, mixed-content = promotional, audience-size sanity; replies are allowlisted |
+| `injection_guard` | flags instruction-like text; `wrap()` marks scraped/inbound text as untrusted data |
+| `pii_guard` | email, Indian mobile, PAN, Aadhaar; `redact()` / `restore()` around model calls |
+| `visibility_stats` | frozen prompt-set hash, no blended numbers, app vs API separation, `real_change()` (noise + chance band), `smallest_provable_move()` |
+| `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget |
+| `gate` | the deployment gate above |
+| `judges` | 6 LLM-judge templates: swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check |
+
+## Configure
+
+`gtm-evals init` writes `gtm-evals.yaml`. Any key overrides the bundled default (see them all with `gtm-evals policy`). Presets:
+
+```yaml
+profile: clyve          # founder-led D2C, India: ICP exclusions, Clyve kill switch
+outreach:
+  excluded_categories: ["trading", "real estate"]
 ```
 
-No API key needed for the deterministic layer. LLM judges in `evals/judges/` are plain prompt templates: use them with any model, or run `evals/judge.py` with `ANTHROPIC_API_KEY` set.
+## Golden sets (your own test cases)
 
-## Principles (non-negotiable)
+```json
+{"id": "c1", "guard": "claims", "input": {"text": "Trusted by 50,000 kitchens.", "register": "claims_register.json"},
+ "expected_pass": false, "source": "real", "why": "invented number"}
+```
 
-1. **No bare numbers.** Every score or ₹ figure carries a confidence stamp: `OBSERVED`, `OUR READ`, `ASSUMED · ±1`, `CAPTURED`.
-2. **The generator never grades itself.** The checker gets ground truth (a claims register, a frozen prompt set, a lead's actual signals), not just the draft.
-3. **Freeze the yardstick.** Prompt sets and rubrics are hashed at Day 0. A changed hash invalidates the comparison.
-4. **Change must beat noise.** No "up X%" unless the move is bigger than run-to-run variation.
-5. **External actions are tiered.** Draft → internal write → single send → bulk send/publish. Each tier adds a gate.
-6. **Scraped content is data, never instructions.** Reviews, websites, inbound replies are wrapped and scanned before any model sees them.
-7. **Promises are filtered.** If a line is only true when results go well, it's cut.
+`guard` is one of `claims · promise · manipulation · injection · pii · outreach · automation_send · automation_reply`. Only `"source": "real"` rows count as deployment evidence. Every approver rejection or edit should become a row.
 
-## License
-
-Apache-2.0. Use it, fork it, ship it. If it helps your team, tell us what broke. That's how the golden sets get better.
-
-## Simulation results (18 Nov 2026)
+## How good are the guards? (honest numbers)
 
 | | Result |
 |---|---|
-| Held-out adversarial set, code only | 13/25 before fixes → 20/25 after |
-| Held-out, code + judges | 25/25 (judges simulated, not yet calibrated) |
+| Held-out adversarial set, code only | 13/25 before fixes → **20/25** after |
+| Held-out, code + judges | 25/25, with the judges simulated, not calibrated |
 | End-to-end pipeline scenarios | 8/8 |
-| Bugs found and fixed | 17, including 3 high-severity action-gate bugs |
+| Bugs found by simulation and fixed | 17, including 3 high-severity action-gate bugs |
 
-Full write-up: [docs/11-simulation-report.md](docs/11-simulation-report.md).
+Pattern-matching code catches what someone thought of in advance. New phrasings get past it, which is why the judge layer exists and why judges must be calibrated on *your* labels before you trust them. Full report: [docs/11-simulation-report.md](docs/11-simulation-report.md).
 
-## Honest note on the scores
-
-The seeded golden sets were written alongside the guards, so they pass at 100% by design. Read that as the floor, not proof. The guards earn trust when real rejections, approver edits and escalations from live work become new rows (see `CONTRIBUTING.md`).
-
-## KPI formulas
-
-The Clyve and ContentOS KPI formulas (76 metrics: diagnostic, AI visibility, outcome, revenue bridge, funnel, acquisition, lead gen, products, the firm, and guardrails/evals) live in `kpi/` as data. One command regenerates both the branded KPI page and `docs/10-kpi-formulas.md`:
+## Learn it by breaking it
 
 ```bash
-python -m kpi.build_html > Clyve_and_ContentOS_KPI_Formulas.html
-python -m kpi.build_md   > docs/10-kpi-formulas.md
+git clone https://github.com/Akulm26/clyve-evals-guardrails && cd clyve-evals-guardrails
+pip install -e ".[dev]"
+python learn/check.py 1     # sneak a fake number past the gate, then fix it
+python learn/check.py 2     # is that AI-visibility jump a win or noise?
+python learn/check.py 3     # catch a stretched personalisation
 ```
 
-`tests/test_kpi.py` checks that the page's worked examples match the code that enforces them (e.g. the O2 example: 4.2-point move, 11.5-point chance band → flat).
+## The playbook
+
+The `docs/` folder is the thinking behind the code:
+
+```
+00-mental-model.md        guardrails vs evals; the 3 eval levels
+01-clyve-system-map.md    a real business end to end, and where AI breaks it
+02-architecture.md        tier choice, generator/evaluator contract, context + token plan
+03-guardrail-layers.md    4 layers × 3 enforcement types; risk tiers R0–R3
+04-eval-system.md         golden sets, judges, calibration, online + outcome evals
+05-lanes/                 content ops · AI visibility · GTM engineering · marketing automation
+06-compliance-india.md    DPDP, TRAI, WhatsApp, Gmail/Yahoo bulk-sender rules (sourced)
+07-failure-modes.md       MAST failure taxonomy for marketing systems
+08-operating-cadence.md   what runs per output / day / week / engagement
+09-scope-ladder.md        bringing automation in step by step
+10-kpi-formulas.md        76 KPI formulas (generated from kpi/)
+11-simulation-report.md   what was stress-tested, what broke
+12-deployment-gate.md     deployable / safe / ethical
+```
+
+## Repo layout
+
+```
+src/gtm_evals/        the library (guards, gate, runner, judges, CLI, bundled policy + templates)
+workflows/            manifests for Clyve's own automations (+ examples/ that must stay BLOCKED)
+evals/datasets/       golden sets for this repo
+sim/                  adversarial fuzz, held-out set, end-to-end pipeline, judge simulation
+kpi/                  Clyve / ContentOS KPI formulas as code
+learn/                break-and-fix exercises
+tests/                pytest
+```
+
+## Contributing
+
+The most valuable contribution is **a real failure** the guards missed. Add it as a golden-set row, show the miss, fix the guard without new false alarms. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Not legal advice: the compliance mappings help engineers build the right checks. Confirm with counsel for your category and market.
+
+## License
+
+Apache-2.0.

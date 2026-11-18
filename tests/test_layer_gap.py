@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from guardrails import load_policy, promise_guard  # noqa: E402
-from guardrails.outreach_guard import _overlap  # noqa: E402
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+from gtm_evals import load_policy, promise_guard  # noqa: E402
+from gtm_evals.outreach_guard import _overlap  # noqa: E402
 
-P = load_policy()
+P = load_policy(profile="clyve")
 ROWS = [json.loads(x) for x in (ROOT / "evals/datasets/layer_gap.jsonl").read_text(encoding="utf-8").splitlines() if x]
 
 

@@ -1,7 +1,7 @@
 """Ethics: flag pressure tactics (false urgency, false scarcity, guilt, fear) for a human to verify.
 
 These lines are only acceptable if true and sourced, which code can't verify, so the guard
-escalates rather than blocks. Policy: policies/clyve_policy.yaml → manipulation.patterns
+escalates rather than blocks. Policy: src/gtm_evals/data/default.yaml → manipulation.patterns
 """
 from __future__ import annotations
 

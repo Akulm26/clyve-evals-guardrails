@@ -62,7 +62,7 @@ A judge is only as good as its reference. Rules:
 Run at Day 0 / 30 / 60 / 90 on the **frozen** yardstick:
 
 - Visibility split by query type (brand / niche / "best X"), 2–3 runs per prompt, through the real app interfaces, screenshots kept
-- A change counts only if it beats run-to-run noise: `guardrails/visibility_stats.py::real_change`
+- A change counts only if it beats run-to-run noise: `src/gtm_evals/visibility_stats.py::real_change`
 - ₹ bridge on the same private data definition as Day 0
 - GTM: reply rate, positive reply rate, meetings per 100 sends, with send volume and ICP mix held steady, otherwise you're comparing different campaigns
 
@@ -71,7 +71,7 @@ Run at Day 0 / 30 / 60 / 90 on the **frozen** yardstick:
 ```bash
 python evals/run_evals.py                 # all deterministic guards vs golden sets
 python evals/run_evals.py --lane outreach # one lane
-python evals/judge.py evals/judges/swap_test.md evals/datasets/content_drafts.jsonl  # needs ANTHROPIC_API_KEY
+python evals/judge.py src/gtm_evals/data/judges/swap_test.md evals/datasets/content_drafts.jsonl  # needs ANTHROPIC_API_KEY
 ```
 
 The runner exits non-zero if any guard's recall on must-block cases drops under the policy threshold, so it can gate CI.
