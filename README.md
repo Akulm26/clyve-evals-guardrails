@@ -528,6 +528,7 @@ The `docs/` folder is the thinking behind the code:
 11-simulation-report.md   what was stress-tested, what broke
 12-deployment-gate.md     deployable / safe / ethical
 13-judge-calibration.md   labelling sheet → agreement → manifest
+14-related-work.md        9 outside GTM evals, benchmarks and skill packs, and what to adopt
 ```
 
 ## Repo layout

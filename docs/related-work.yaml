@@ -1,0 +1,115 @@
+# Registry of outside GTM evals work (read 18 Nov 2026). Prose and backlog: docs/14-related-work.md
+# independent: false = run by a vendor whose own product scored best or who sells the evaluated category
+- id: deepline-gtm-bench
+  name: Deepline GTM-Bench 1.0
+  url: https://deepline.com/benchmarks/gtm-bench
+  type: benchmark
+  date: 2026-10-23
+  lanes: [gtm_engineering]
+  evaluates: [account_discovery, contact_sourcing, contact_enrichment, account_research, signal_tracking]
+  ground_truth: rubric per eval, no answer key
+  grader: llm_judge_blind_3x
+  metrics: [quality_score_with_minus1_for_wrong, time_to_answer]
+  cost_reported: false
+  independent: false
+  licence: not stated
+  adopt: [wrong_below_missing, blind_judge, repeat_judging]
+- id: unify-evals
+  name: Unify, How we build evals for AI agents
+  url: https://www.unifygtm.com/blog/how-we-build-evals-for-ai-agents
+  type: practice_writeup
+  date: 2026-06-22
+  lanes: [gtm_engineering]
+  evaluates: [reply_classification, research_agents, business_understanding, writing]
+  ground_truth: human-labelled email replies; structured checkable answers
+  grader: deterministic + llm_judge + human
+  metrics: [weighted_accuracy, plan_quality, tool_choice, steps_per_task, reliability_5_runs, generalisability]
+  independent: null
+  adopt: [repeat_run_reliability, tool_use_check, class_weighted_accuracy]
+- id: revsure-gtm-agent-evals
+  name: RevSure, Evals for GTM agents
+  url: https://www.revsure.ai/research-playbooks/evals-for-gtm-agents
+  type: playbook
+  date: 2026-07-01
+  lanes: [gtm_engineering, marketing_automation]
+  evaluates: [pipeline_agents, scoring, outreach]
+  ground_truth: four quarters of CRM history replayed as of each decision date
+  grader: historical_replay + human_trace_review
+  metrics: [caught_and_how_early, guard_cohorts_behind_volume, calibration_by_week, cost_per_workflow]
+  independent: null
+  adopt: [as_of_date_replay, correct_for_wrong_reasons_verdict, guard_metrics_in_manifest]
+- id: cargo-revenue-agent-evals
+  name: Cargo, LLM evals for revenue agents (2026)
+  url: https://www.getcargo.ai/blog/llm-evals-for-revenue-agents-2026
+  type: playbook
+  date: 2025-12-15
+  lanes: [gtm_engineering]
+  evaluates: [enrichment, routing, research_briefs, outreach_drafts, pipeline_risk]
+  ground_truth: per-workflow test sets; historical routing outcomes
+  grader: not specified
+  metrics: [field_precision, coverage, citation_rate, routing_tp_fp, outcome_metrics]
+  independent: null
+  adopt: [shadow_canary_segment_rollout, segment_regression, citation_rate]
+- id: drevon-research-agent-benchmark
+  name: Drevon, Benchmark an AI research agent before you trust its leads
+  url: https://www.drevon.dev/blogs/evals-for-gtm-how-to-benchmark-an-ai-research-agent-before-you-trust-its-leads
+  type: method_guide
+  date: 2026-09-20
+  lanes: [gtm_engineering]
+  evaluates: [account_research_agents]
+  ground_truth: two experts per account, Cohen kappa >= 0.80
+  grader: deterministic + llm_faithfulness_judge
+  metrics: [signal_precision_90, provenance_95, recall_70, rule_compliance_100, cost_per_account, latency_per_lead]
+  independent: false
+  adopt: [sample_size_from_claim, stratified_sets, two_labellers_kappa, provenance_check, cost_latency_thresholds]
+- id: blackpearl-gtm-bench
+  name: Blackpearl GTM-Bench v1
+  url: https://www.blackpearl.com/gtm-bench
+  repo: https://github.com/pearlengine/GTM.Bench
+  type: benchmark
+  date: 2026-06
+  lanes: [gtm_engineering]
+  evaluates: [offer_inference, icp_definition, prospect_lists_with_evidence]
+  ground_truth: per-record match and audit grading
+  grader: not detailed
+  metrics: [net_score_plus1_0_minus1, a_grade_rate]
+  cost_reported: false
+  independent: false
+  licence: check repo
+  adopt: [net_scoring]
+- id: zarif-gtm-skills
+  name: zarif3624/gtm-skills
+  url: https://github.com/zarif3624/gtm-skills
+  type: skill_pack_with_evals
+  date: 2026-09-11
+  lanes: [gtm_engineering]
+  evaluates: [25_sales_skills, cross_skill_journeys, skill_routing]
+  ground_truth: must_demonstrate / must_avoid / human_review assertions
+  grader: blind packet, pass/partial/fail with cited evidence
+  independent: true
+  licence: MIT
+  adopt: [assertion_cases, blind_packets, evidence_bound_to_commit, journey_status_upgrades]
+- id: onvoyage-gtm-engineer-skills
+  name: onvoyage-ai/gtm-engineer-skills
+  url: https://github.com/onvoyage-ai/gtm-engineer-skills
+  type: skill_pack_with_evals
+  date: 2026-10-11
+  lanes: [ai_seo, content_ops]
+  evaluates: [aeo_website_audit, geo_content_pipeline]
+  ground_truth: frozen fixtures, CSV contracts
+  grader: 16 deterministic checks + agent-scored rubric (50%)
+  independent: true
+  licence: MIT
+  adopt: [llms_txt, meta_description, single_h1, open_graph, image_alt, heading_hierarchy, rss, site_wide_80pct]
+- id: acehsu-gtm-engine
+  name: Ace-Hsu/AI-Go-To-Market-Engine
+  url: https://github.com/Ace-Hsu/AI-Go-To-Market-Engine
+  type: agent_system
+  date: 2025-08-11
+  lanes: [content_ops]
+  evaluates: [message_house, personas, testimonials, social, website_copy]
+  ground_truth: human GUI scores fed back as examples
+  grader: human (>= 7.0 gate, >= 8.0 reference)
+  independent: true
+  risk: testimonial agent writes in a believable customer voice; fabricated reviews if published as real
+  adopt: [fabricated_testimonial_guard]
