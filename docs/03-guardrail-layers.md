@@ -40,14 +40,14 @@ Tier = how bad it is if wrong × how hard it is to undo.
 
 | Check | Layer | Enforcement | File |
 |---|---|---|---|
-| Redact emails, Indian mobiles, PAN, Aadhaar before LLM calls | Input | Deterministic | `guardrails/pii_guard.py` |
-| Flag instructions hidden in scraped text | Input | Deterministic + wrap as untrusted | `guardrails/injection_guard.py` |
-| Every number traceable to a `have`-status claim | Output | Deterministic | `guardrails/claims_gate.py` |
-| Every ₹ figure stamped; `ASSUMED` ₹ must be a range | Output | Deterministic | `guardrails/claims_gate.py` |
-| No outcome promises / ranking guarantees | Output | Deterministic | `guardrails/promise_guard.py` |
-| Personalisation facts match real, fresh signals | Output | Deterministic | `guardrails/outreach_guard.py` |
-| No private-metric claims before intake | Output | Deterministic | `guardrails/outreach_guard.py` |
-| On-thesis, swap test, claim safety | Output | LLM judge + reference | `evals/judges/*.md` |
-| Consent per channel, suppression, unsubscribe, caps | Action | Deterministic | `guardrails/outreach_guard.py` |
-| Idempotency, frequency cap, quiet hours, tenant match | Action | Deterministic | `guardrails/automation_guard.py` |
-| Tier → required approvals, kill switch, budget | Action | Deterministic | `guardrails/action_gate.py` |
+| Redact emails, Indian mobiles, PAN, Aadhaar before LLM calls | Input | Deterministic | `src/gtm_evals/pii_guard.py` |
+| Flag instructions hidden in scraped text | Input | Deterministic + wrap as untrusted | `src/gtm_evals/injection_guard.py` |
+| Every number traceable to a `have`-status claim | Output | Deterministic | `src/gtm_evals/claims_gate.py` |
+| Every ₹ figure stamped; `ASSUMED` ₹ must be a range | Output | Deterministic | `src/gtm_evals/claims_gate.py` |
+| No outcome promises / ranking guarantees | Output | Deterministic | `src/gtm_evals/promise_guard.py` |
+| Personalisation facts match real, fresh signals | Output | Deterministic | `src/gtm_evals/outreach_guard.py` |
+| No private-metric claims before intake | Output | Deterministic | `src/gtm_evals/outreach_guard.py` |
+| On-thesis, swap test, claim safety | Output | LLM judge + reference | `src/gtm_evals/data/judges/*.md` |
+| Consent per channel, suppression, unsubscribe, caps | Action | Deterministic | `src/gtm_evals/outreach_guard.py` |
+| Idempotency, frequency cap, quiet hours, tenant match | Action | Deterministic | `src/gtm_evals/automation_guard.py` |
+| Tier → required approvals, kill switch, budget | Action | Deterministic | `src/gtm_evals/action_gate.py` |

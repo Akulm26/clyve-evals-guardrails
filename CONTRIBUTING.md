@@ -8,13 +8,18 @@ The most valuable contribution is **a real failure**: a case where an AI marketi
 4. Open a PR with the before/after output.
 
 Rules:
-- Thresholds live in `policies/clyve_policy.yaml`, not in code.
-- Guards stay dependency-free and deterministic. Anything needing judgment goes in `evals/judges/` with a ground-truth input.
+- Thresholds live in `src/gtm_evals/data/default.yaml`, not in code.
+- Guards stay dependency-free and deterministic. Anything needing judgment goes in `src/gtm_evals/data/judges/` with a ground-truth input.
 - Seeded golden sets are written by the people who wrote the guards, so they score well by design. Treat a perfect score as the floor. The real test is cases from production.
 
 ## Adding a new automation
 
 1. Write `workflows/<name>.yaml` (see `docs/12-deployment-gate.md`).
-2. Run `python gate/check_workflow.py workflows/<name>.yaml`.
+2. Run `gtm-evals gate workflows/<name>.yaml`.
 3. BLOCKED → fix it before merging. PILOT ONLY → it may run only with a human checking every R2+ action.
 4. Golden-set rows from real work get `"source": "real"`; synthetic rows don't.
+
+## Releasing
+
+1. Bump `version` in `pyproject.toml` and `__version__` in `src/gtm_evals/__init__.py`; add a CHANGELOG entry.
+2. `git tag v0.1.1 && git push --tags`. The `release` workflow builds and publishes to PyPI (needs the one-time trusted-publisher setup described in `.github/workflows/release.yml`).

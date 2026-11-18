@@ -64,7 +64,7 @@ See [07-failure-modes.md](07-failure-modes.md). The top three for marketing syst
 
 ## 6. Implementation artifact
 
-The `guardrails/` package is the deterministic layer. `evals/judges/` holds the evaluator prompts. `guardrails/action_gate.py` is the tier enforcer that sits in front of every external action, whether that's n8n, a Python script or a Claude Code loop.
+The `src/gtm_evals/` package is the deterministic layer. `src/gtm_evals/data/judges/` holds the evaluator prompts. `src/gtm_evals/action_gate.py` is the tier enforcer that sits in front of every external action, whether that's n8n, a Python script or a Claude Code loop.
 
 ## References
 

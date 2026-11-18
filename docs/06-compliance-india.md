@@ -27,7 +27,7 @@
 - **Delivery window.** From late Oct 2025, Service Explicit SMS can only be delivered **10:00 AM–9:00 PM**, and messages outside that band are auto-rejected. [SMSGatewayHub; Meritto]
 - **SE becomes promotional.** Service Explicit templates were scheduled to move to the Promotional category from March 2026. [Fast2SMS]
 
-→ `policies/clyve_policy.yaml` sets `automation.quiet_hours_ist` to **21:00–10:00**, matching that window. `automation_guard` blocks promotional types inside it. Treat any message with an offer in it as promotional, which matches TRAI's mixed-content rule.
+→ `src/gtm_evals/data/default.yaml` sets `automation.quiet_hours_ist` to **21:00–10:00**, matching that window. `automation_guard` blocks promotional types inside it. Treat any message with an offer in it as promotional, which matches TRAI's mixed-content rule.
 
 ## WhatsApp Business Platform
 

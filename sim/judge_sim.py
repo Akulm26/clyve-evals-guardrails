@@ -2,8 +2,8 @@
 import json, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from evals.judge import normalise  # noqa: E402
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+from gtm_evals.judges import normalise  # noqa: E402
 
 cases = json.loads((ROOT / "sim/results/judge_cases.json").read_text())
 outs = json.loads((ROOT / "sim/results/judge_sim_outputs.json").read_text())["outputs"]

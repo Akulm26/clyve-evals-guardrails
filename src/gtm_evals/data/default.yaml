@@ -1,4 +1,4 @@
-# Every threshold in one place. Change policy here, not in code.
+# gtm-evals default policy. Override any key in your own gtm-evals.yaml; lists are replaced, not merged.
 version: 1
 
 claims:
@@ -7,7 +7,7 @@ claims:
   assumed_requires_range: true     # ASSUMED ₹ figures must be ranges (₹X–Y), never points
   ignore_years: [1990, 2035]       # 4-digit numbers in this range are treated as years
   ignore_numbers: ["1", "2", "3", "30", "60", "90"]   # step counts / Day 30/60/90 references
-  block_number_words: true         # learn/ exercise 1 is about why this exists
+  block_number_words: true
   number_words: ["hundred", "thousand", "lakh", "lakhs", "crore", "million", "dozen", "twice", "double", "triple", "half of"]
 
 promise:
@@ -28,7 +28,7 @@ promise:
 outreach:
   max_words: 160
   signal_freshness_days: 45
-  # results words a personal claim may only use if the signal itself says them (learn/ exercise 3)
+  # results words a personal claim may only use if the signal itself says them
   outcome_words: ["doubl", "tripl", "sales", "revenue", "roas", "growth", "growing", "selling out", "sold out", "viral", "%"]
   require_unsubscribe_for: ["email"]
   unsubscribe_patterns: ["unsubscribe", "opt out", "opt-out", "reply stop", "reply \"stop\""]
@@ -42,7 +42,7 @@ outreach:
   stop_bounce_rate: 0.02
   stop_spam_complaint_rate: 0.001
   sender_auth_required: ["spf", "dkim", "dmarc"]
-  excluded_categories: ["trading", "real estate", "directory"]
+  excluded_categories: []         # your ICP exclusions, e.g. ["trading", "real estate"]
 
 automation:
   dedupe_window_hours: 24
@@ -84,7 +84,7 @@ action_gate:
     activate_flow: R3
     publish: R3
     client_crm_bulk_write: R3
-  kill_switch_env: "CLYVE_KILL_SWITCH"
+  kill_switch_env: "GTM_EVALS_KILL_SWITCH"
   max_regenerations: 2
   max_tokens_per_run: 200000
 
@@ -116,7 +116,7 @@ deployment_gate:
   judge_min_labels: 30
   judge_min_agreement: 0.85
   min_log_retention_days: 90
-  # Never collected or stored by a Clyve workflow (DPDP minimisation; Clyve memory rules)
+  # Never collected or stored by a workflow (DPDP minimisation; Clyve memory rules)
   forbidden_data_fields: [aadhaar, pan, passport, bank_account, card_number, religion, caste, health, sexual_orientation, political_view]
   # Never used to score, rank or target people (fairness)
   protected_attributes: [gender, age, religion, caste, ethnicity, race, disability, marital_status, sexual_orientation, pregnancy]

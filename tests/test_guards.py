@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path[:0] = [str(Path(__file__).resolve().parent.parent / "src"), str(Path(__file__).resolve().parent.parent)]
 
-from guardrails import load_policy  # noqa: E402
-from guardrails import claims_gate, injection_guard, pii_guard, promise_guard, visibility_stats  # noqa: E402
-from guardrails.action_gate import ActionGate  # noqa: E402
-from guardrails.automation_guard import check_reply  # noqa: E402
-from guardrails.core import Verdict  # noqa: E402
-from guardrails.outreach_guard import deliverability  # noqa: E402
+from gtm_evals import load_policy  # noqa: E402
+from gtm_evals import claims_gate, injection_guard, pii_guard, promise_guard, visibility_stats  # noqa: E402
+from gtm_evals.action_gate import ActionGate  # noqa: E402
+from gtm_evals.automation_guard import check_reply  # noqa: E402
+from gtm_evals.core import Verdict  # noqa: E402
+from gtm_evals.outreach_guard import deliverability  # noqa: E402
 
-P = load_policy()
+P = load_policy(profile="clyve")
 REG = [{"id": "C1", "values": ["4.6", "2140"], "status": "have"},
        {"id": "C2", "values": ["40"], "status": "gettable"}]
 

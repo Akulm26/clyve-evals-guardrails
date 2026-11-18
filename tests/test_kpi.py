@@ -3,13 +3,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 
-from guardrails import load_policy, visibility_stats  # noqa: E402
+from gtm_evals import load_policy, visibility_stats  # noqa: E402
 from kpi import ALL, LAYERS  # noqa: E402
 from kpi.build_html import build  # noqa: E402
 
-P = load_policy()
+P = load_policy(profile="clyve")
 
 
 def _rows(checkpoint, hits_per_pass, runs_per_pass=24):

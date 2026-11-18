@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from guardrails import claims_gate, load_policy, outreach_guard, visibility_stats  # noqa: E402
+sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+from gtm_evals import claims_gate, load_policy, outreach_guard, visibility_stats  # noqa: E402
 
 LEARN = ROOT / "learn"
 DATA = ROOT / "evals" / "datasets"
@@ -26,7 +26,7 @@ def ex1():
     if not attack or attack.startswith("#"):
         return print("Write your attack sentence in learn/ex1_attack.txt first.")
     v = claims_gate.check(attack, reg, p)
-    words = [w for w in load_policy()["claims"]["number_words"] if w in attack.lower()]
+    words = [w for w in load_policy(profile="clyve")["claims"]["number_words"] if w in attack.lower()]
     if not p["claims"]["block_number_words"]:
         print("PART A: break it")
         if v.passed and words:
@@ -46,7 +46,7 @@ def ex1():
 
 
 def ex2():
-    p = load_policy()
+    p = load_policy(profile="clyve")
     rows = []
     for cp, hits in (("day0", [8, 10, 6]), ("day30", [11, 10, 12])):
         for run, h in enumerate(hits, 1):

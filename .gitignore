@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .env
 shots/
+dist/
+build/
+*.egg-info/

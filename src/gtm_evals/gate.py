@@ -1,37 +1,36 @@
 """Deployment gate: is this AI automation deployable, safe and ethical?
 
-Every Clyve workflow ships with a manifest (workflows/*.yaml). This checker reads it, runs the
+Every workflow ships with a manifest (workflows/*.yaml). This checker reads it, runs the
 three tests, and returns one of:
 
     DEPLOYABLE   every test passes, evidence is real
     PILOT ONLY   safe and ethical, but evidence is still synthetic or judges uncalibrated
     BLOCKED      a safety or ethics test fails — do not run it
 
-    python gate/check_workflow.py workflows/teardown-outreach.yaml
-    python gate/check_workflow.py workflows/*.yaml          # exit 1 if any is BLOCKED
+    gtm-evals gate workflows/*.yaml          # exit 1 if any is BLOCKED
 """
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-from guardrails import load_policy  # noqa: E402
-from guardrails.action_gate import ActionGate  # noqa: E402
+from .action_gate import ActionGate
 
-GUARD_FILES = {p.stem for p in (ROOT / "guardrails").glob("*.py")} - {"__init__", "core"}
+GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
+               "automation_guard", "manipulation_guard", "visibility_stats", "action_gate"}
+_BASE = [Path.cwd()]
 
 
 def _rows(path):
-    p = ROOT / path
+    p = next((b / path for b in _BASE if (b / path).exists()), Path(path))
     if not p.exists():
         return None
     return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
 
 
-def check(manifest: dict, policy: dict) -> dict:
+def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> dict:
+    """Run the safe / ethical / deployable tests on one workflow manifest."""
+    _BASE[:] = [Path(base_dir)] if base_dir else [Path.cwd()]
     g = policy["deployment_gate"]
     gate = ActionGate(policy)
     deploy, safe, ethical = [], [], []   # (ok: bool, message)
@@ -107,18 +106,3 @@ def report(res: dict) -> str:
         out.append(f"  {k.upper()}")
         out += [f"    {'✅' if ok else '❌'} {msg}" for ok, msg in res[k]]
     return "\n".join(out)
-
-
-def main(paths):
-    import yaml
-    policy = load_policy()
-    blocked = False
-    for p in paths:
-        res = check(yaml.safe_load(Path(p).read_text(encoding="utf-8")), policy)
-        print(report(res))
-        blocked |= res["verdict"] == "BLOCKED"
-    sys.exit(1 if blocked and "--allow-blocked" not in sys.argv else 0)
-
-
-if __name__ == "__main__":
-    main([a for a in sys.argv[1:] if not a.startswith("--")])

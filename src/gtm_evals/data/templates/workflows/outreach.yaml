@@ -1,0 +1,23 @@
+# One manifest per automation. Check it with: gtm-evals gate workflows/*.yaml
+name: Cold outreach (example)
+owner: ""                       # who answers for this workflow
+lane: gtm_engineering           # content_ops | ai_visibility | gtm_engineering | marketing_automation
+status: pilot
+actions: [score_lead, crm_update, send_single, send_bulk]
+guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard]
+judges:
+  - template: personalisation_factuality
+    calibration: {labelled_cases: 0, agreement: 0}
+golden_set: evals/golden.jsonl
+human_approver: ""              # required: send_bulk is an R3 action
+canary_percent: 5
+kill_switch: GTM_EVALS_KILL_SWITCH
+token_budget: 200000
+logging: {gate_log: true, retention_days: 365}
+data:
+  personal_data: true
+  fields: [name, work_email, company, role]
+  lawful_basis_field: true
+  consent_checked_at_send: true
+  opt_out_hours: 24
+scoring_features: [industry, company_size, recent_funding, hiring_signal]

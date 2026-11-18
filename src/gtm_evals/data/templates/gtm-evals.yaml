@@ -1,0 +1,16 @@
+# gtm-evals config for this project. Uncomment a key to override the bundled default.
+# See the full effective policy:  gtm-evals policy
+# Lists replace the default list; they are not merged.
+
+# profile: clyve                 # optional preset layered under this file (see: gtm-evals policy --profiles)
+
+# outreach:
+#   excluded_categories: ["trading", "real estate"]   # your ICP exclusions
+#   daily_cap_per_inbox: 30
+#   signal_freshness_days: 45
+
+# automation:
+#   quiet_hours_ist: {start: "21:00", end: "10:00"}    # no promotional sends in this window
+
+# action_gate:
+#   kill_switch_env: "GTM_EVALS_KILL_SWITCH"           # set this env var to stop every R1+ action

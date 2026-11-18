@@ -46,4 +46,4 @@ python learn/check.py 3
 
 ---
 
-When you're done, compare your fixes with `policies/clyve_policy.yaml`. The real policy ships with both rules on.
+When you're done, compare your fixes with `src/gtm_evals/data/default.yaml`. The real policy ships with both rules on.
