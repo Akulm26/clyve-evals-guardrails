@@ -7,6 +7,8 @@ claims:
   assumed_requires_range: true     # ASSUMED ₹ figures must be ranges (₹X–Y), never points
   ignore_years: [1990, 2035]       # 4-digit numbers in this range are treated as years
   ignore_numbers: ["1", "2", "3", "30", "60", "90"]   # step counts / Day 30/60/90 references
+  block_number_words: true         # learn/ exercise 1 is about why this exists
+  number_words: ["hundred", "thousand", "lakh", "lakhs", "crore", "million", "dozen", "twice", "double", "triple", "half of"]
 
 promise:
   # Phrases that are only true if results go well. Case-insensitive regex.
@@ -22,6 +24,8 @@ promise:
 outreach:
   max_words: 160
   signal_freshness_days: 45
+  # results words a personal claim may only use if the signal itself says them (learn/ exercise 3)
+  outcome_words: ["doubl", "tripl", "sales", "revenue", "roas", "growth", "growing", "selling out", "sold out", "viral", "%"]
   require_unsubscribe_for: ["email"]
   unsubscribe_patterns: ["unsubscribe", "opt out", "opt-out", "reply stop", "reply \"stop\""]
   optin_required_for: ["whatsapp", "sms"]

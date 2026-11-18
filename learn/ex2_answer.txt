@@ -1,0 +1,2 @@
+# Line 1: real or noise
+# Line 2: number of prompts

@@ -64,6 +64,9 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
         match = next((s for s in lead.get("signals", []) if _overlap(claim, s["fact"])), None)
         if match is None:
             v.append(f"personalisation not backed by any signal: '{claim}'")
+        elif stretched := [w for w in cfg.get("outcome_words", [])
+                           if re.search(rf"\b{re.escape(w)}", claim, re.I) and not re.search(rf"\b{re.escape(w)}", match["fact"], re.I)]:
+            v.append(f"stretched personalisation — '{', '.join(stretched)}' not in the signal: '{claim}'")
         elif not match.get("source_url"):
             v.append(f"signal has no source URL: '{claim}'")
         elif (today - _d(match["date"])).days > fresh_days:

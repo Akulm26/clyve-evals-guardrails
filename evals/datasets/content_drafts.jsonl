@@ -10,3 +10,5 @@
 {"id": "ct10", "text": "Lab-tested every batch. We'll double your sales by Diwali.", "expected_pass": false, "why": "outcome promise"}
 {"id": "ct11", "text": "Day 30 re-score shows brand-query mentions moved from 3 of 10 prompts to 6 of 10.", "expected_pass": false, "why": "6 and 10 not in register — re-score numbers must come from the stamped report"}
 {"id": "ct12", "text": "Batches tested at an NABL-accredited lab; 4.6★ from 2,140 buyers.", "expected_pass": true, "why": "register"}
+{"id": "ct13", "text": "Fifty thousand kitchens already cook with our masala.", "expected_pass": false, "why": "invented quantity spelled out in words"}
+{"id": "ct14", "text": "Gap estimate: ₹1.5–3 lakh a month (ASSUMED · ±1).", "expected_pass": true, "why": "'lakh' inside a stamped range is a unit"}

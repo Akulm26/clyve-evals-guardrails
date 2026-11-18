@@ -33,6 +33,19 @@ A judge is only as good as its reference. Rules:
 5. **Re-calibrate when the model changes.** A model upgrade is a new judge.
 6. **Never the only gate on R3.** A judge can lower the human's load. It can't replace their sign-off.
 
+## Why both layers: the gap set
+
+`evals/datasets/layer_gap.jsonl` holds cases where the code layer gets it **wrong**, pinned by `tests/test_layer_gap.py` so the gaps stay visible:
+
+| Case | Code says | Truth | Why |
+|---|---|---|---|
+| Real signal + "already doubling sales" | pass (word overlap) | fail | Invented result rides on true words. Now partly closed by `outcome_words` |
+| Accurate paraphrase of a signal | fail | pass | Different words, same fact. Fix the generator (reuse the signal's wording), not the threshold |
+| "Within a month, you'll be the brand ChatGPT names first" | pass | fail | Reworded promise; no banned phrase |
+| "Expect sales to climb once AI recommends you" | pass | fail | Outcome promise with no trigger words |
+
+**If-then:** if a failure can be described as a pattern, add a code rule. If it can only be described as meaning, it needs a judge with a reference (`judges/promise_check.md`, `judges/personalisation_factuality.md`). The `human_verdict` column is the calibration set for those judges: run `evals/judge.py` on it and check agreement before trusting them.
+
 ## Online evals (cheap, always on)
 
 | Signal | Lane | What it tells you |
