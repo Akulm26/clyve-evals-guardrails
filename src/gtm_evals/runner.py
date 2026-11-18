@@ -24,6 +24,9 @@ def _register(reg, base: Path):
 
 
 def run_case(row: dict, policy: dict, base: Path) -> Verdict:
+    if not isinstance(row, dict) or "guard" not in row or "input" not in row:
+        rid = row.get("id", "?") if isinstance(row, dict) else "?"
+        raise ValueError(f"case {rid}: not a golden-set row (needs 'guard', 'input' and 'expected_pass'; see the README)")
     g, x = row["guard"], row["input"]
     if g == "claims":
         return claims_gate.check(x["text"], _register(x.get("register"), base), policy)
@@ -66,6 +69,8 @@ def score(rows: list[dict], policy: dict, base: Path) -> dict:
     for r in rows:
         v = run_case(r, policy, base)
         s = per.setdefault(r["guard"], {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "misses": [], "false_alarms": []})
+        if "expected_pass" not in r:
+            raise ValueError(f"case {r.get('id', '?')}: missing 'expected_pass'")
         should_block, blocked = not r["expected_pass"], not v.passed
         if should_block and blocked:
             s["tp"] += 1

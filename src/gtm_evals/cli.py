@@ -78,7 +78,11 @@ def cmd_eval(a):
     p = _policy(a)
     all_ok = True
     for path in a.golden:
-        res = score(load_rows(path), p, Path(path).parent.parent if Path(path).parent.name == "evals" else Path(path).parent)
+        try:
+            res = score(load_rows(path), p, Path(path).parent.parent if Path(path).parent.name == "evals" else Path(path).parent)
+        except (ValueError, KeyError, FileNotFoundError) as e:
+            print(f"{NO} {path}: {e}", file=sys.stderr)
+            return 2
         print(f"\n{path}  ·  {res['n']} cases ({res['real']} real)")
         for g, s in res["guards"].items():
             print(f"  {OK if s['ok'] else NO} {g:17} recall {s['recall']:.2f}  precision {s['precision']:.2f}"
@@ -161,13 +165,28 @@ def cmd_judge(a):
               f"then: gtm-evals judge calibrate {a.template} {out}")
         return 0
     if a.action == "status":
+        if not a.dataset:
+            print(f"{NO} status needs a label file: gtm-evals judge status {a.template} labels.csv", file=sys.stderr)
+            return 2
         c = judges.count_labelled(load_rows(a.dataset))
         ready = c["labelled"] >= 30 and c["pass"] >= 10 and c["fail"] >= 10
         print(f"{c['labelled']}/30 labelled · {c['pass']} pass · {c['fail']} fail · "
               + ("ready to calibrate" if ready else "not ready (need 30, with ≥10 pass and ≥10 fail)"))
         return 0 if ready else 1
     if a.action == "calibrate":
-        res = judges.calibrate(t, load_rows(a.dataset), a.model)
+        import os
+        if not a.dataset:
+            print(f"{NO} calibrate needs a label file: gtm-evals judge calibrate {a.template} labels.csv", file=sys.stderr)
+            return 2
+        rows = load_rows(a.dataset)
+        if judges.count_labelled(rows)["labelled"] and not os.environ.get("ANTHROPIC_API_KEY"):
+            print(f"{NO} set ANTHROPIC_API_KEY to run the judge (labels are counted with: gtm-evals judge status)", file=sys.stderr)
+            return 2
+        try:
+            res = judges.calibrate(t, rows, a.model)
+        except RuntimeError as e:
+            print(f"{NO} {e}", file=sys.stderr)
+            return 2
         print(f"agreement {res['agreement']:.0%} on {res['labelled_cases']} labelled cases (gate: ≥85% on ≥30)")
         for rid, got, want in res["results"]:
             if got != want:

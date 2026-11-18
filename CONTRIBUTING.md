@@ -11,6 +11,7 @@ Rules:
 - Thresholds live in `src/gtm_evals/data/default.yaml`, not in code.
 - Guards stay dependency-free and deterministic. Anything needing judgment goes in `src/gtm_evals/data/judges/` with a ground-truth input.
 - Seeded golden sets are written by the people who wrote the guards, so they score well by design. Treat a perfect score as the floor. The real test is cases from production.
+- Run `python -m pytest` (unit + integration) and `python -m pytest -m system` before a PR. Which layer a new test belongs in: [TESTING.md](TESTING.md).
 
 ## Adding a new automation
 

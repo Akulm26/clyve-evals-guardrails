@@ -456,8 +456,19 @@ learn/                break-and-fix exercises
 examples/             copy-paste recipes
 action.yml            the GitHub Action
 Dockerfile            the ghcr.io image
-tests/                pytest
+tests/                unit/ · integration/ · system/ (see TESTING.md)
 ```
+
+## Testing
+
+426 tests in three layers: **unit** (329, every guard and gate rule), **integration** (79, every CLI command, the full pipeline, label sheet → gate) and **system** (18, the built wheel in a fresh venv, plus the container). Coverage is 99% and CI fails below 95%. No test calls a real model.
+
+```bash
+python -m pytest              # unit + integration
+python -m pytest -m system    # build, install in a fresh venv, use it like a stranger
+```
+
+Details: [TESTING.md](TESTING.md).
 
 ## Contributing
 

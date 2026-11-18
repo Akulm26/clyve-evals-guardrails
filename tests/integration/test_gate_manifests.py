@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 from gtm_evals.gate import check  # noqa: E402
 from gtm_evals import load_policy, manipulation_guard  # noqa: E402

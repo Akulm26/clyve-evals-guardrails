@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import yaml
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 FILES = sorted([*ROOT.glob(".github/workflows/*.yml"), ROOT / "action.yml", *ROOT.glob("workflows/**/*.yaml"),
                 *ROOT.glob("src/gtm_evals/data/**/*.yaml"), *ROOT.glob(".github/ISSUE_TEMPLATE/*.yml")])
 

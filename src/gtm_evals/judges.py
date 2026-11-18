@@ -43,7 +43,10 @@ def normalise(out: dict) -> str:
 
 
 def run(template: str, values: dict, model: str | None = None) -> dict:
-    import anthropic  # optional dependency
+    try:
+        import anthropic  # optional dependency
+    except ImportError as e:
+        raise RuntimeError('running a judge needs the judges extra: pip install "gtm-evals[judges]"') from e
 
     system, user = render(template, values)
     msg = anthropic.Anthropic().messages.create(model=model or os.environ.get("JUDGE_MODEL", "claude-sonnet-5-5"),

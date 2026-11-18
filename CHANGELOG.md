@@ -9,6 +9,8 @@
 - Gate: a judge entry can name its `labels:` file, and the gate fails if the manifest claims more labelled cases than the file holds.
 - `evals/labels/personalisation_factuality.csv` (Clyve's own, 30 rows to fill), `docs/templates/judge-labelling-sheet.xlsx`, `docs/13-judge-calibration.md`, and a `calibrate` workflow that re-runs on label changes when an `ANTHROPIC_API_KEY` secret is set.
 - `judges.calibrate` skips unlabelled rows.
+- Tests split into **unit** (329), **integration** (79) and **system** (18: built wheel in a fresh venv, container image); coverage 99%, CI gate at 95%. See TESTING.md.
+- Fixed, found by the new tests: `gtm-evals eval` on a file in the wrong format crashed with a traceback (now exit 2 with a clear message); `judge calibrate` without an API key or the `[judges]` extra crashed (now exit 2 with what to install or set); `judge status`/`calibrate` with no label file crashed.
 
 ## 0.1.0 — 18 Nov 2026
 First release.

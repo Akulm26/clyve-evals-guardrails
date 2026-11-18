@@ -24,7 +24,7 @@ dependencies = ["pyyaml>=6"]
 
 [project.optional-dependencies]
 judges = ["anthropic>=0.40"]
-dev = ["pytest>=8", "openpyxl"]
+dev = ["pytest>=8", "pytest-cov", "openpyxl", "build"]
 
 [project.scripts]
 gtm-evals = "gtm_evals.cli:main"
@@ -42,3 +42,17 @@ include = ["src/gtm_evals", "README.md", "LICENSE", "NOTICE", "CHANGELOG.md", "p
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
+addopts = "-m 'not system' --strict-markers"
+markers = [
+  "unit: one module in isolation (tests/unit)",
+  "integration: modules together, real files, CLI in-process (tests/integration)",
+  "system: the built package installed in a fresh venv (tests/system; run with -m system)",
+]
+
+[tool.coverage.run]
+source = ["gtm_evals"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

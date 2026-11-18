@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 from gtm_evals import load_policy, promise_guard  # noqa: E402
 from gtm_evals.outreach_guard import _overlap  # noqa: E402

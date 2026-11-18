@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path[:0] = [str(Path(__file__).resolve().parent.parent / "src"), str(Path(__file__).resolve().parent.parent)]
+sys.path[:0] = [str(Path(__file__).resolve().parents[2] / "src"), str(Path(__file__).resolve().parents[2])]
 
 from gtm_evals import load_policy  # noqa: E402
 from gtm_evals import claims_gate, injection_guard, pii_guard, promise_guard, visibility_stats  # noqa: E402
