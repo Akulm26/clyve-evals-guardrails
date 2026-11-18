@@ -60,6 +60,8 @@ docs/
   07-failure-modes.md         MAST failure taxonomy mapped to marketing systems
   08-operating-cadence.md     What runs per output, per day, per week, per engagement
   09-scope-ladder.md          How GTM engineering + marketing automation enter Clyve, step by step
+  10-kpi-formulas.md          All 76 Clyve/ContentOS KPI formulas, generated from kpi/
+kpi/                          KPI formulas as code: one record per metric; renders the KPI page and the markdown
 learn/                        3 hands-on break-and-fix exercises (start here if you're new)
 guardrails/                   Deterministic guards (pure Python, no dependencies)
 policies/clyve_policy.yaml    Every threshold in one file
@@ -99,3 +101,14 @@ Apache-2.0. Use it, fork it, ship it. If it helps your team, tell us what broke.
 ## Honest note on the scores
 
 The seeded golden sets were written alongside the guards, so they pass at 100% by design. Read that as the floor, not proof. The guards earn trust when real rejections, approver edits and escalations from live work become new rows (see `CONTRIBUTING.md`).
+
+## KPI formulas
+
+The Clyve and ContentOS KPI formulas (76 metrics: diagnostic, AI visibility, outcome, revenue bridge, funnel, acquisition, lead gen, products, the firm, and guardrails/evals) live in `kpi/` as data. One command regenerates both the branded KPI page and `docs/10-kpi-formulas.md`:
+
+```bash
+python -m kpi.build_html > Clyve_and_ContentOS_KPI_Formulas.html
+python -m kpi.build_md   > docs/10-kpi-formulas.md
+```
+
+`tests/test_kpi.py` checks that the page's worked examples match the code that enforces them (e.g. the O2 example: 4.2-point move, 11.5-point chance band → flat).

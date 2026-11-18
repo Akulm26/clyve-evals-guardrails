@@ -53,6 +53,11 @@ def run_rates(rows: list[dict], checkpoint: str, query_type: str, engine: str | 
     return [sum(v) / len(v) for _, v in sorted(by_run.items()) if v]
 
 
+def smallest_provable_move(runs_in_segment: int, z: float = 1.96, p: float = 0.5) -> float:
+    """KPI C5. Smallest move (0–1) a segment of this size can prove, at the worst-case rate p = 0.5."""
+    return z * math.sqrt(p * (1 - p) * 2 / runs_in_segment)
+
+
 def real_change(rows: list[dict], before: str, after: str, query_type: str, policy: dict,
                 engine: str | None = None) -> dict:
     a = run_rates(rows, before, query_type, engine)
