@@ -33,3 +33,18 @@ jobs:
           echo "We guarantee results." > d.txt && ! gtm-evals check d.txt
           sed -i 's/owner: ""/owner: "ci"/; s/human_approver: ""/human_approver: "ci"/' workflows/outreach.yaml
           gtm-evals gate workflows/*.yaml
+
+  action-self-test:                    # the repo's own GitHub Action, used the way others will use it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with: { command: gate, args: "workflows/*.yaml" }
+      - uses: ./
+        with: { command: eval, args: "src/gtm_evals/data/templates/evals/golden.jsonl" }
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t gtm-evals:ci . && docker run --rm gtm-evals:ci --version

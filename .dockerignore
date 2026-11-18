@@ -1,0 +1,6 @@
+.git
+dist
+build
+**/__pycache__
+sim/results
+*.egg-info

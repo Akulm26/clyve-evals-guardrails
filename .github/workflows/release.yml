@@ -1,20 +1,93 @@
-# Publishes to PyPI when you push a tag like v0.1.0.
-# One-time setup on pypi.org: Account → Publishing → add a "trusted publisher" for
-#   owner Akulm26, repo clyve-evals-guardrails, workflow release.yml, environment pypi.
+# Push a tag like v0.1.0 to release.
+#   1. builds the wheel + sdist and tests the wheel from an empty folder
+#   2. creates a GitHub Release with both files attached (notes from CHANGELOG.md)
+#   3. publishes the container to GitHub Packages: ghcr.io/akulm26/gtm-evals:<version> and :latest
+#   4. (optional) publishes to PyPI — only if repo variable PUBLISH_PYPI is "true" and a PyPI
+#      trusted publisher is set up for this repo / release.yml / environment "pypi"
 name: release
 on:
   push:
     tags: ["v*"]
+
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions: { id-token: write, contents: write }
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - id: v
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          [ "$TAG" = "$PKG" ] || { echo "tag v$TAG does not match pyproject version $PKG"; exit 1; }
+          echo "version=$PKG" >> "$GITHUB_OUTPUT"
       - run: pip install build && python -m build
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Test the wheel like a new user
+        run: |
+          python -m venv /tmp/u && /tmp/u/bin/pip install dist/*.whl
+          mkdir /tmp/p && cd /tmp/p && export PATH=/tmp/u/bin:$PATH
+          gtm-evals --version && gtm-evals init && gtm-evals eval evals/golden.jsonl
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: dist/ }
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - name: Release notes from CHANGELOG
+        run: |
+          awk -v v="## ${{ needs.build.outputs.version }}" '$0 ~ "^## " {p = (index($0, v) == 1)} p' CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ### Install
+          ```bash
+          pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@${{ github.ref_name }}"
+          # or the wheel attached below
+          docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:${{ needs.build.outputs.version }} --help
+          ```
+          ### GitHub Action
+          ```yaml
+          - uses: Akulm26/clyve-evals-guardrails@${{ github.ref_name }}
+            with: { command: gate, args: "workflows/*.yaml" }
+          ```
+          EOF
       - uses: softprops/action-gh-release@v2
-        with: { files: "dist/*" }
+        with:
+          name: gtm-evals ${{ github.ref_name }}
+          body_path: notes.md
+          files: dist/*
+
+  container:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/akulm26/gtm-evals:${{ needs.build.outputs.version }}
+            ghcr.io/akulm26/gtm-evals:latest
+
+  pypi:
+    needs: build
+    if: vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions: { id-token: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - uses: pypa/gh-action-pypi-publish@release/v1
