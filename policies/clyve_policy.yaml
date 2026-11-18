@@ -1,0 +1,76 @@
+# Every threshold in one place. Change policy here, not in code.
+version: 1
+
+claims:
+  stamps: ["OBSERVED", "OUR READ", "ASSUMED · ±1", "ASSUMED", "CAPTURED"]
+  stamp_window_chars: 120          # a ₹ figure needs a stamp within this many characters
+  assumed_requires_range: true     # ASSUMED ₹ figures must be ranges (₹X–Y), never points
+  ignore_years: [1990, 2035]       # 4-digit numbers in this range are treated as years
+  ignore_numbers: ["1", "2", "3", "30", "60", "90"]   # step counts / Day 30/60/90 references
+
+promise:
+  # Phrases that are only true if results go well. Case-insensitive regex.
+  banned:
+    - "\\bguarantee(d|s)?\\b"
+    - "\\b(get|be|getting) (you )?cited (in|within) \\d+"
+    - "\\brank(ed|ing)? (#|no\\.? ?|number )?1\\b"
+    - "\\b(top|first) (spot|position|result) (on|in) (chatgpt|perplexity|gemini|google|ai)"
+    - "\\b(will|we'll|we will) (double|triple|10x|increase|grow|boost) (your )?(revenue|sales|leads|roas)"
+    - "\\b100% (accurate|visibility|results)\\b"
+    - "\\bovernight\\b"
+
+outreach:
+  max_words: 160
+  signal_freshness_days: 45
+  require_unsubscribe_for: ["email"]
+  unsubscribe_patterns: ["unsubscribe", "opt out", "opt-out", "reply stop", "reply \"stop\""]
+  optin_required_for: ["whatsapp", "sms"]
+  private_metric_patterns:          # blocked before intake (stage < audit)
+    - "\\byour (conversion rate|cvr|cac|aov|roas|ltv|churn|revenue|margin)s? (is|are|of|at)\\b"
+    - "\\byou(?:'re| are) (losing|burning|spending) ₹?\\s?[\\d,]+ (on|in) (ads|cac)"
+  stages_with_private_data: ["audit", "build", "retainer"]
+  daily_cap_per_inbox: 30
+  stop_bounce_rate: 0.02
+  stop_spam_complaint_rate: 0.001
+  sender_auth_required: ["spf", "dkim", "dmarc"]
+  excluded_categories: ["trading", "real estate", "directory"]
+
+automation:
+  dedupe_window_hours: 24
+  max_per_contact_per_7d: {email: 3, whatsapp: 2, sms: 1}
+  quiet_hours_ist: {start: "21:00", end: "10:00"}   # promotional sends blocked; verify vs current TRAI rules
+  promotional_types: ["promo", "winback", "abandoned_cart", "launch"]
+  max_audience_growth_factor: 3.0
+  reply_agent_allowed_actions: ["answer_faq", "share_link", "book_call", "escalate"]
+  escalate_keywords: ["refund", "discount", "% off", "legal", "lawyer", "complaint", "consumer court", "allergy", "side effect"]
+
+action_gate:
+  tiers:
+    R0: {checks: false, evaluator: false, human: false, canary: false}
+    R1: {checks: true,  evaluator: false, human: false, canary: false}
+    R2: {checks: true,  evaluator: true,  human: false, canary: false}
+    R3: {checks: true,  evaluator: true,  human: true,  canary: true}
+  action_tiers:
+    draft: R0
+    recon_note: R0
+    crm_update: R1
+    score_lead: R1
+    report_draft: R1
+    send_single: R2
+    reply_single: R2
+    send_bulk: R3
+    activate_flow: R3
+    publish: R3
+    client_crm_bulk_write: R3
+  kill_switch_env: "CLYVE_KILL_SWITCH"
+  max_regenerations: 2
+  max_tokens_per_run: 200000
+
+visibility:
+  query_types: ["brand", "niche", "best_x"]
+  min_runs_per_prompt: 2
+  z: 1.96
+
+evals:
+  min_recall_must_block: 0.95
+  min_precision: 0.80

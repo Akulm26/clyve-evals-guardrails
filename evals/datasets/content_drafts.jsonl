@@ -1,0 +1,12 @@
+{"id": "ct01", "text": "Rated 4.6★ across 2,140 reviews, and we still grind every batch by hand in Mohali.", "expected_pass": true, "why": "all numbers in register (have)"}
+{"id": "ct02", "text": "Over 50,000 Indian kitchens trust our masalas.", "expected_pass": false, "why": "invented number"}
+{"id": "ct03", "text": "40% of our customers come back within a month.", "expected_pass": false, "why": "claim is only gettable"}
+{"id": "ct04", "text": "You're leaving ₹2–4 lakh a month on the table.", "expected_pass": false, "why": "₹ with no stamp"}
+{"id": "ct05", "text": "Estimated gap: ₹3 lakh a month. ASSUMED · ±1", "expected_pass": false, "why": "ASSUMED ₹ shown as a point"}
+{"id": "ct06", "text": "Estimated gap: ₹2–4 lakh a month (ASSUMED · ±1). Estimated from search demand, your price and a 1–2% conversion range.", "expected_pass": true, "why": "stamped range"}
+{"id": "ct07", "text": "Work with us and we guarantee ChatGPT starts recommending you.", "expected_pass": false, "why": "guarantee"}
+{"id": "ct08", "text": "Brands we work with rank #1 on Perplexity for their niche.", "expected_pass": false, "why": "ranking promise hidden in a proof line"}
+{"id": "ct09", "text": "Ships to 19,000 pin codes from one kitchen in Mohali, since 2019.", "expected_pass": true, "why": "register numbers + year"}
+{"id": "ct10", "text": "Lab-tested every batch. We'll double your sales by Diwali.", "expected_pass": false, "why": "outcome promise"}
+{"id": "ct11", "text": "Day 30 re-score shows brand-query mentions moved from 3 of 10 prompts to 6 of 10.", "expected_pass": false, "why": "6 and 10 not in register — re-score numbers must come from the stamped report"}
+{"id": "ct12", "text": "Batches tested at an NABL-accredited lab; 4.6★ from 2,140 buyers.", "expected_pass": true, "why": "register"}

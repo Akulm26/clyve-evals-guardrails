@@ -1,0 +1,4 @@
+pyyaml>=6
+pytest>=8
+# optional, for evals/judge.py
+# anthropic>=0.40
