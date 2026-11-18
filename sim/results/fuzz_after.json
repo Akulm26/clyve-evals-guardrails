@@ -1,0 +1,278 @@
+[
+ {
+  "guard": "claims_gate",
+  "case": "number with k suffix",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "lakh shorthand",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "number words",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "gettable claim, 'percent' spelled",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "rating out of 5 is not a new claim",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "same numbers, different format",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "Rs instead of ₹, stamped range",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "INR figure with no stamp",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "Rs point estimate stamped ASSUMED",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "Indian digit grouping, range",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "₹ point with L suffix",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "claims_gate",
+  "case": "stamp too far from figure",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "2x not in list",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "#1 without 'rank'",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "timeline in words",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "top answer",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "negated guarantee",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "negated #1",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "promise_guard",
+  "case": "safe phrasing",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "'ignore the above' without 'instructions'",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "directions synonym",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "Hinglish",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "address to the model",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "benign 'previous'",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "injection_guard",
+  "case": "benign 'instructions'",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "pii_guard",
+  "case": "Aadhaar with hyphens",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "pii_guard",
+  "case": "phone no spaces",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "pii_guard",
+  "case": "obfuscated email",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "pii_guard",
+  "case": "12-digit order id is not Aadhaar",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "pii_guard",
+  "case": "pin code",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "outreach_guard",
+  "case": "fact in body but missing from claims list",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "outreach_guard",
+  "case": "private metric, 'must be'",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "outreach_guard",
+  "case": "private metric, 'looks'",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "outreach_guard",
+  "case": "excluded category with hyphen",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "outreach_guard",
+  "case": "STOP in capitals is still an opt-out",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "promo type in capitals at night",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "transactional + offer = promotional (TRAI mixed content)",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "exactly 21:00",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "exactly 10:00",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "same template exactly 24h later",
+  "expected": "pass",
+  "got": "pass"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "'percent off'",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "refund without the word",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "automation_guard",
+  "case": "Hinglish refund",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "action_gate",
+  "case": "R1 with an empty checks list (nothing actually ran)",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "action_gate",
+  "case": "R3 with canary status not given",
+  "expected": "block",
+  "got": "block"
+ },
+ {
+  "guard": "action_gate",
+  "case": "blank approval ID",
+  "expected": "block",
+  "got": "block"
+ }
+]

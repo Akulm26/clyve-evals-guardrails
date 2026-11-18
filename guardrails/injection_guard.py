@@ -11,8 +11,14 @@ import re
 from .core import Verdict
 
 SIGNS = [
-    r"ignore (all |any |the )?(previous|prior|above|earlier) (instructions|rules|prompts?)",
-    r"disregard (your|the|all) (instructions|rules|guidelines)",
+    r"ignore (all |any |the )?(previous|prior|above|earlier)\b",
+    r"disregard (all |any |the |your )?((previous|prior|above|earlier) )?(instructions|rules|guidelines|directions|prompts?)",
+    r"(instruction|rule|prompt)s?\s+(ko\s+)?(ignore|bhool|chhod)",
+    r"\b(note|message|instruction)s?\s+(to|for)\s+(the\s+)?(ai|assistant|llm|model|chatbot|gpt|claude)\b",
+    r"\b(dear|hey|attention)\s+(ai|assistant|llm|model|chatbot)\b",
+    r"\bsystem\s+(override|prompt|message)\b",
+    r"\bforget\s+(everything|all|what)\b",
+    r"\bas an ai( language model)?\b",
     r"ignore (your|my|the|these) (rules|instructions|guidelines|policy)",
     r"you are now (a|an|the)\b",
     r"\bsystem prompt\b",

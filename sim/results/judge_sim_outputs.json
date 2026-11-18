@@ -1,0 +1,23 @@
+{
+ "_note": "SIMULATED judge run, 18 Nov 2026. No API key was available, so Claude (the same model that wrote the templates and the expected labels) answered each rendered prompt in sim/results/judge_prompts/. This proves the templates render, the rubrics are decidable and the output schemas parse. It is NOT calibration (KPI Q3): that needs 30+ cases labelled by Akul and an independent model run.",
+ "outputs": {
+  "J01": {"promises": [{"quote": "within a fortnight", "why": "false if no AI answer includes the brand in 14 days"}], "verdict": "fail"},
+  "J02": {"promises": [{"quote": "will definitely increase your sales", "why": "false if sales stay flat"}], "verdict": "fail"},
+  "J03": {"promises": [{"quote": "Within a month, you'll be the brand ChatGPT names first", "why": "ranking + timeline; false if not named first"}], "verdict": "fail"},
+  "J04": {"promises": [{"quote": "Expect sales to climb", "why": "outcome promise; false if sales flat"}], "verdict": "fail"},
+  "J05": {"promises": [], "verdict": "pass"},
+  "J06": {"flags": [{"quote": "repeat rate doubled", "type": "results", "evidence_claim_id": "none"}], "verdict": "needs_review"},
+  "J07": {"flags": [{"quote": "Nearly half our buyers reorder", "type": "results", "evidence_claim_id": "none"}], "verdict": "needs_review"},
+  "J08": {"flags": [{"quote": "Boosts immunity", "type": "health", "evidence_claim_id": "none"}, {"quote": "100% chemical-free", "type": "absolute", "evidence_claim_id": "none"}], "verdict": "fail"},
+  "J09": {"flags": [{"quote": "Rated 4.6★ across 2,140 reviews", "type": "results", "evidence_claim_id": "C1"}, {"quote": "lab-tested at an NABL-accredited lab", "type": "results", "evidence_claim_id": "C5"}], "verdict": "pass"},
+  "J10": {"statements": [{"quote": "launched 4 new Meta ads for the winter chai masala range", "signal_id": "S1", "status": "supported"}, {"quote": "already doubling sales", "signal_id": "none", "status": "stretched"}], "private_data_implied": true, "verdict": "fail"},
+  "J11": {"statements": [{"quote": "rolled out four fresh Facebook ads for your cold-weather tea spice line", "signal_id": "S1", "status": "supported"}], "private_data_implied": false, "verdict": "pass"},
+  "J12": {"statements": [{"quote": "Congrats on the Shark Tank feature", "signal_id": "none", "status": "unsupported"}, {"quote": "launched 4 new Meta ads for the winter chai masala range", "signal_id": "S1", "status": "supported"}], "private_data_implied": false, "verdict": "fail"},
+  "J13": {"generic_sentences": ["We make masalas with love, using only the finest ingredients, for families who care about taste."], "specific_sentences": [], "verdict": "fail", "fix_hint": "Replace with C5 (NABL lab-tested batches) or C1 (4.6★ across 2,140 reviews)."},
+  "J14": {"generic_sentences": [], "specific_sentences": [{"quote": "lab-tested at an NABL-accredited lab", "claim_id": "C5"}, {"quote": "2,140 buyers rate it 4.6★", "claim_id": "C1"}], "verdict": "pass", "fix_hint": ""},
+  "J15": {"thesis_quote": "none", "apparent_reader": "anyone cooking for Diwali", "verdict": "off", "reason": "Recipe content; never argues traceability or lab testing."},
+  "J16": {"thesis_quote": "We publish the lab report for every batch.", "apparent_reader": "home cooks who read labels", "verdict": "on", "reason": "Argues trust through traceability for the label-reading buyer."},
+  "J17": {"mentioned": true, "statements": [{"quote": "Mumbai-based", "status": "wrong"}, {"quote": "known for organic certification", "status": "unverifiable"}], "position": "listed", "accuracy": "inaccurate"},
+  "J18": {"mentioned": true, "statements": [{"quote": "from Mohali", "status": "correct"}, {"quote": "publishes lab tests for each batch", "status": "correct"}], "position": "listed", "accuracy": "accurate"}
+ }
+}

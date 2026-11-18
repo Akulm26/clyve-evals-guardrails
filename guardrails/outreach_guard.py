@@ -42,7 +42,7 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
         v.append("no lawful basis recorded for this contact")
     if channel in cfg["optin_required_for"] and channel not in lead.get("optin_channels", []):
         v.append(f"no {channel} opt-in on record")
-    cat = (lead.get("category") or "").lower()
+    cat = re.sub(r"[-_/]+", " ", (lead.get("category") or "").lower())
     if any(x in cat for x in cfg["excluded_categories"]):
         v.append(f"category '{cat}' is outside ICP")
 
@@ -72,6 +72,10 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
         elif (today - _d(match["date"])).days > fresh_days:
             v.append(f"stale signal ({(today - _d(match['date'])).days}d old): '{claim}'")
 
+    # Statements about the lead in the body that were never declared as claims (and so never checked)
+    for s in _undeclared_lead_statements(body, message.get("claims_about_lead", []), lead.get("name")):
+        v.append(f"statement about the lead not declared in claims_about_lead: '{s[:80]}'")
+
     # No private metrics before intake
     if lead.get("stage") not in cfg["stages_with_private_data"]:
         for pat in cfg["private_metric_patterns"]:
@@ -95,6 +99,26 @@ def _overlap(claim: str, fact: str, threshold: float = 0.6) -> bool:
     """A claim is backed if most of its meaningful words appear in the stored signal."""
     c = _tokens(claim)
     return bool(c) and len(c & _tokens(fact)) / len(c) >= threshold
+
+
+_ABOUT_THEM = re.compile(r"\byour\b|\byou\s+(just\s+)?(launched|ran|posted|shipped|hired|raised|dropped|started|opened|released|announced|won|did)\b", re.I)
+_SPECIFIC = re.compile(r"(?<!\d)\d+(?!\d)(?![-\s]?(?:min|mins|minute|minutes|hour|hours|hr|hrs)\b)|\b(drop|launch|campaign|ads?|range|collection|sale|video|reel|post|hire|funding|store|outlet|award|feature|collab|podcast)\b", re.I)
+
+
+def _undeclared_lead_statements(body: str, claims: list, lead_name: str | None = None) -> list:
+    """Heuristic: a sentence that talks about the lead ('your …', 'you launched …') AND names something
+    specific must be covered by a declared claim. Generic lines ('worth a call for your team?') pass."""
+    out = []
+    for sent in re.split(r"(?<=[.!?;])\s+", body):
+        if not _ABOUT_THEM.search(sent):
+            continue
+        rest = re.sub(r"^\W*\w+", "", sent)  # ignore the sentence's first word (capitalised anyway)
+        specific = _SPECIFIC.search(sent) or re.search(r"\b[A-Z][a-z]{2,}", rest)
+        if not specific:
+            continue
+        if not any(_overlap(c, sent) for c in claims):
+            out.append(sent.strip())
+    return out
 
 
 def deliverability(stats: dict, policy: dict) -> Verdict:

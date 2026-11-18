@@ -7,6 +7,7 @@ history = [{"contact_id", "template_id", "channel", "ts_ist"}]   # recent sends
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, time, timedelta
 
 from .core import Verdict
@@ -55,9 +56,12 @@ def check_send(event: dict, history: list[dict], policy: dict) -> Verdict:
         if len(recent) >= cap:
             v.append(f"frequency cap: {len(recent)} {channel} sends in 7d (cap {cap})")
 
-    # Quiet hours for promotional types
+    # Quiet hours for promotional sends. Any offer inside a service message makes it promotional (TRAI mixed-content rule).
     q = cfg["quiet_hours_ist"]
-    if event.get("type") in cfg["promotional_types"] and _in_quiet_hours(ts, _t(q["start"]), _t(q["end"])):
+    body = (event.get("body") or "").lower()
+    is_promo = ((event.get("type") or "").lower() in cfg["promotional_types"] or event.get("has_offer")
+                or any(w in body for w in cfg.get("offer_words", [])))
+    if is_promo and _in_quiet_hours(ts, _t(q["start"]), _t(q["end"])):
         v.append(f"promotional send in quiet hours ({q['start']}–{q['end']} IST)")
 
     # Audience sanity (null filter / broken segment)
@@ -76,7 +80,10 @@ def check_reply(proposed: dict, inbound_text: str, policy: dict) -> Verdict:
         v.append(f"action '{proposed.get('action')}' not in allowed list")
     blob = f"{inbound_text}\n{proposed.get('text', '')}".lower()
     hits = [k for k in cfg["escalate_keywords"] if k in blob]
-    escalate = bool(hits) and proposed.get("action") != "escalate"
+    auto_ok = any(re.search(p, inbound_text, re.I) for p in cfg.get("reply_auto_ok_patterns", []))
+    needs_human = bool(hits) or not auto_ok
+    escalate = needs_human and proposed.get("action") != "escalate"
     if escalate:
-        v.append(f"sensitive topic ({', '.join(hits)}) — must escalate to a human")
+        why = f"sensitive topic ({', '.join(hits)})" if hits else "not a known-safe question"
+        v.append(f"{why} — must escalate to a human")
     return Verdict.from_violations("reply_guard", v, escalate=escalate)
