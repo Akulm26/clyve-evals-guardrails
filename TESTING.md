@@ -55,7 +55,7 @@ python -m pytest --cov=gtm_evals       # coverage (CI fails below 95% on unit + 
 
 `.github/workflows/evals.yml` runs:
 
-1. **unit** on Python 3.10, 3.12 and 3.13
+1. **unit** on Python 3.10, 3.11, 3.12 and 3.13
 2. **integration** with the 95% coverage gate, then the golden sets, the adversarial fuzz, the pipeline simulation and the gate on this repo's workflows
 3. **system**: wheel, fresh venv and container image
 4. **action-self-test**: the repo's own GitHub Action, used the way others will use it

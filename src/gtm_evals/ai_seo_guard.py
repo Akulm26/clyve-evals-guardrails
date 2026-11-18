@@ -226,7 +226,8 @@ def schema(html: str, policy: dict, required: list[str] | None = None) -> Verdic
         for field in cfg["schema_required_fields"].get(t, []):
             alts = field.split("|")
             if not any(any(n.get(a) not in (None, "", [], {}) for a in alts) for n in found):
-                v.append(f"{t} schema is missing '{field.replace('|', "' or '")}'")
+                shown = "' or '".join(alts)
+                v.append(f"{t} schema is missing '{shown}'")
     return Verdict.from_violations("ai_seo_guard", v)
 
 
