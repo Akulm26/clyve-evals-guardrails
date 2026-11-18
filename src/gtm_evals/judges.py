@@ -62,9 +62,10 @@ def calibrate(template: str, rows: list[dict], model: str | None = None) -> dict
     agree = total = 0
     results = []
     for r in rows:
+        if r.get("human_verdict") is None:
+            continue  # unlabelled (e.g. blank rows of a labelling sheet): don't spend a model call
         out = run(template, r, model)
-        if r.get("human_verdict") is not None:
-            total += 1
-            agree += int(out["_verdict"] == r["human_verdict"])
+        total += 1
+        agree += int(out["_verdict"] == r["human_verdict"])
         results.append((r.get("id"), out["_verdict"], r.get("human_verdict")))
     return {"labelled_cases": total, "agreement": agree / total if total else 0.0, "results": results}
