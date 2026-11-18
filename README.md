@@ -1,4 +1,4 @@
-# gtm-evals!
+# gtm-evals
 
 [![ci](https://github.com/Akulm26/clyve-evals-guardrails/actions/workflows/evals.yml/badge.svg)](https://github.com/Akulm26/clyve-evals-guardrails/actions/workflows/evals.yml)
 [![release](https://img.shields.io/github/v/release/Akulm26/clyve-evals-guardrails?label=release)](https://github.com/Akulm26/clyve-evals-guardrails/releases)
