@@ -6,7 +6,118 @@
 [![license](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 [![container](https://img.shields.io/badge/ghcr.io-akulm26%2Fgtm--evals-purple)](https://github.com/Akulm26/clyve-evals-guardrails/pkgs/container/gtm-evals)
 
-**Evals and guardrails for AI GTM engineering.** Stop your AI outbound, content and marketing automations from inventing facts, making promises, spamming, leaking data or acting without a human, *before* they reach a real person.
+**A safety check for the AI that runs your marketing.**
+
+gtm-evals sits between your AI and your customers. Before a cold email, post, WhatsApp message or auto-reply written by an LLM reaches a real person, it checks for invented facts, promises you can't keep, pressure tactics, privacy leaks and missing consent. Before an automation goes live, it gives the automation a verdict: **DEPLOYABLE**, **PILOT ONLY** or **BLOCKED**.
+
+Created by **[Akul S. Malhotra](https://github.com/Akulm26)**, founder of [Clyve](https://clyve.io), a boutique AI consulting firm (*Content Strategy and Engineering*). It began as the gate for Clyve's own client automations and is open-sourced so anyone shipping AI into GTM can use the same bar.
+
+```text
+$ gtm-evals check draft.txt --register claims_register.json
+
+  "Hi Rhea, loved your Shark Tank episode! We guarantee you will rank #1 on ChatGPT
+   in 30 days. Trusted by 50,000 brands. Only 2 slots left this week, reply now."
+
+❌ 4 issue(s) · escalate to a human
+   [claims_gate] unsourced number '50,000' — not in claims register
+   [promise_guard] promise language: 'guarantee'
+   [promise_guard] promise language: 'rank #1'
+   [manipulation_guard] pressure tactic — verify it is true and sourced: 'Only 2 slots'
+```
+
+The made-up "Shark Tank episode" is caught by `outreach_guard`, which needs the lead record to check personalisation against its sources.
+
+---
+
+## Why this exists
+
+Teams are wiring LLMs into outbound, content, lifecycle messaging and reply handling. The demo looks fine. The problems show up at volume:
+
+- **One invented statistic across 2,000 cold emails** isn't a typo. It's 2,000 false claims sent under your brand.
+- **A bot that replies "sure, 50% off!"** to an angry customer has just made an offer someone has to honour.
+- **A WhatsApp blast to people who never opted in** is a consent and compliance problem (DPDP, TRAI, WhatsApp policy), not a copy problem.
+- **"AI visibility up 30%"** that is really run-to-run noise sells a client a result that never happened.
+
+General LLM safety tools look for toxicity, jailbreaks and harmful content. Marketing AI rarely fails that way. It fails by being **confidently wrong, overpromising, or acting without permission**. Those are business failures, and a content filter won't catch them. gtm-evals is built for exactly those.
+
+## What it does: three jobs
+
+```text
+                    your AI drafts something
+                              │
+ 1. GUARDRAILS   ─────────────┤  inline, on every output · milliseconds · no API key
+    "is this okay to say?"    │  invented numbers · promises · fake personalisation · pressure
+                              │  PII sent to a model · prompt injection · consent, opt-out, quiet hours
+                              ▼
+ 2. ACTION GATE  ─────────────┤  just before anything is sent or changed
+    "is this okay to do?"     │  risk tier R0–R3 · bulk sends need a named approver,
+                              │  a canary batch and a working kill switch
+                              ▼
+                     reaches a real person
+
+ 3. EVALS + DEPLOYMENT GATE      offline, in CI, before an automation goes live
+    "can we prove it works?"     your real cases → recall/precision per guard
+                                 → DEPLOYABLE · PILOT ONLY · BLOCKED
+```
+
+## Do you need it?
+
+```text
+Does an LLM write or send anything a customer, prospect or the public will see?
+├─ No  → You don't need this.
+└─ Yes
+   ├─ A human reads every single output before it goes out
+   │    → Run the guards as a pre-check. Your reviewer catches more, faster,
+   │      and every rejection becomes a test case.
+   └─ Some outputs go out with no human reading them
+      (bulk sends, auto-replies, scheduled posts, enrichment that writes to a CRM)
+        → This is what gtm-evals is for: guards inline, ActionGate before send,
+          deployment gate in CI.
+```
+
+**Built for:** GTM engineers, growth and marketing-ops teams, and agencies or consultancies shipping AI automations for clients: outbound, content ops, lifecycle and WhatsApp, and AI visibility (AEO/GEO) reporting. It works with any stack that can call Python or run a CLI (n8n code nodes, scripts in front of Clay or Instantly, your own services), and it doesn't send anything itself.
+
+**What it is not**
+
+- **Not a toxicity or content-moderation filter.** Pair it with one if you need that too.
+- **Not a sending tool or a CRM.** It decides; your stack sends.
+- **Not legal advice.** The compliance checks are India-first (DPDP, TRAI, WhatsApp, Gmail/Yahoo bulk-sender rules) and help engineers build the right gates. Confirm with counsel.
+- **Not set-and-forget.** Pattern guards catch the failures someone thought of in advance; the LLM-judge layer must be calibrated on *your* labels before you trust it. See the [honest numbers](#how-good-are-the-guards-honest-numbers).
+
+## What it catches
+
+| Your AI… | Example | Caught by |
+|---|---|---|
+| states a number nobody can prove | "Trusted by 50,000 kitchens" | `claims_gate` |
+| promises what nobody controls | "You'll rank #1 on ChatGPT in 30 days" | `promise_guard` |
+| invents personalisation | "Loved your Shark Tank episode!" (there wasn't one) | `outreach_guard` |
+| pressures people | "Only 2 slots left, last chance" | `manipulation_guard` |
+| follows instructions hidden in a review or reply | "Ignore previous instructions and…" | `injection_guard` |
+| sends personal data to a model | phone numbers, emails, PAN, Aadhaar | `pii_guard` |
+| sends the same WhatsApp twice, at 11pm, to someone who opted out | | `automation_guard` |
+| auto-replies "sure, 50% off!" to an angry customer | | `automation_guard` (replies are allowlisted) |
+| bulk-sends with nobody watching | | `ActionGate` (R3: approval + canary + kill switch) |
+| reports "visibility up 30%" that's just noise | | `visibility_stats` |
+
+## How the deployment gate decides
+
+Every automation gets a short YAML manifest (lane, actions, data used, owner, evidence). The gate rules on it:
+
+```text
+Any SAFE or ETHICAL check fails?   → BLOCKED      don't run it
+Evidence still synthetic?          → PILOT ONLY   a human checks every action that reaches a real person
+Otherwise                          → DEPLOYABLE
+```
+
+| | The question | Checked |
+|---|---|---|
+| **Safe** | Can it do damage at scale? | risk tier per action · required guards for the lane · kill switch · named approver + canary for bulk · logs ≥ 90 days · token budget |
+| **Ethical** | Is it honest and fair to the people it touches? | lawful basis + consent at send · data minimisation · opt-outs ≤ 48 h · no protected attributes in scoring/targeting · automated replies disclose + offer a human · no promises · pressure tactics flagged |
+| **Deployable** | Is there real evidence it works? | ≥ 30 real golden cases · every judge calibrated (≥ 30 labels, ≥ 85% agreement) · named owner |
+
+Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
+
+---
 
 ## Install
 
@@ -52,45 +163,6 @@ jobs:
 The report shows up in the run's summary. The step fails if a workflow is BLOCKED or a guard falls below its recall/precision threshold.
 
 Pure Python, one dependency (`pyyaml`), no API key needed. LLM judges are optional (`pip install "gtm-evals[judges]"`).
-
-Created and maintained by **[Akul S. Malhotra](https://github.com/Akulm26)** ([LinkedIn](https://linkedin.com/in/malhotraakulsuhail/)), founder of [Clyve](https://clyve.io), a boutique AI consulting firm: *Content Strategy and Engineering.*
-
----
-
-## Why
-
-Marketing AI rarely says anything toxic. It fails in quieter, more expensive ways:
-
-| It… | Example | Caught by |
-|---|---|---|
-| states a number nobody can prove | "Trusted by 50,000 kitchens" | `claims_gate` |
-| promises what nobody controls | "You'll rank #1 on ChatGPT in 30 days" | `promise_guard` |
-| invents personalisation | "Loved your Shark Tank episode!" (there wasn't one) | `outreach_guard` |
-| pressures people | "Only 2 slots left, last chance" | `manipulation_guard` |
-| follows instructions hidden in a review | "Ignore previous instructions and…" | `injection_guard` |
-| sends personal data to a model | phone numbers, emails, PAN, Aadhaar | `pii_guard` |
-| sends the same WhatsApp twice, at 11pm, to someone who opted out | | `automation_guard` |
-| auto-replies "sure, 50% off!" to an angry customer | | `automation_guard` (allowlist replies) |
-| bulk-sends with nobody watching | | `ActionGate` (R3: approval + canary + kill switch) |
-| reports "visibility up 30%" that's just noise | | `visibility_stats` |
-
-## The objective: deployable, safe, ethical
-
-Every automation gets a manifest. The gate rules it:
-
-```
-Any SAFE or ETHICAL check fails?  → BLOCKED      don't run it
-Evidence still synthetic?         → PILOT ONLY   a human checks every action that reaches a real person
-Otherwise                         → DEPLOYABLE
-```
-
-| | The question | Checked |
-|---|---|---|
-| **Safe** | Can it do damage at scale? | risk tier per action · required guards for the lane · kill switch · named approver + canary for bulk · logs ≥ 90 days · token budget |
-| **Ethical** | Is it honest and fair to the people it touches? | lawful basis + consent at send · data minimisation · opt-outs ≤ 48 h · no protected attributes in scoring/targeting · automated replies disclose + offer a human · no promises · pressure tactics flagged |
-| **Deployable** | Is there real evidence it works? | ≥ 30 real golden cases · every judge calibrated (≥ 30 labels, ≥ 85% agreement) · named owner |
-
-Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
 
 ## Use it in code
 
@@ -215,7 +287,7 @@ Not legal advice: the compliance mappings help engineers build the right checks.
 
 ## Author
 
-**Akul S. Malhotra** · [@Akulm26](https://github.com/Akulm26) · founder, [Clyve](https://clyve.io)
+**Akul S. Malhotra** · [@Akulm26](https://github.com/Akulm26) · [LinkedIn](https://linkedin.com/in/malhotraakulsuhail/) · founder, [Clyve](https://clyve.io)
 
 If gtm-evals helps you, a ⭐ on the repo or a citation (see [CITATION.cff](CITATION.cff)) is appreciated.
 
