@@ -1,6 +1,6 @@
 """Run an LLM judge template over a JSONL dataset and compare with human labels.
 
-    python evals/judge.py evals/judges/swap_test.md data.jsonl --vars brand="Ghar Ka Masala" competitors="A, B"
+    python evals/judge.py evals/judges/swap_test.md data.jsonl --vars brand="Example Masala Co." competitors="A, B"
 
 Each dataset row needs "text" (or the fields the template uses) and optionally "human_verdict".
 Prints agreement with human labels. Below ~85%, fix the rubric before trusting the judge.

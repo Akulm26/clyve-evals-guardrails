@@ -46,9 +46,9 @@ def test_safe_phrasing_allowed():
 
 
 def test_pii_redact_roundtrip():
-    text = "Mail rhea@x.example or call 9814012345, PAN ABCDE1234F"
+    text = "Mail rhea@x.example or call 9000000001, PAN ABCDE1234F"
     red, m = pii_guard.redact(text)
-    assert "rhea@" not in red and "9814012345" not in red and "ABCDE1234F" not in red
+    assert "rhea@" not in red and "9000000001" not in red and "ABCDE1234F" not in red
     assert pii_guard.restore(red, m) == text
 
 

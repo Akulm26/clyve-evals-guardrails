@@ -1,0 +1,20 @@
+# Deliberately unsafe example: the gate must BLOCK this. Kept as a regression test.
+name: Example — unsafe WhatsApp win-back flow
+owner: ""
+lane: marketing_automation
+status: draft
+actions: [activate_flow, send_bulk, reply_single, export_list]
+guards: [automation_guard]
+golden_set: evals/datasets/automation_events.jsonl
+human_approver: ""
+canary_percent: 0
+token_budget: 0
+logging: {gate_log: false, retention_days: 7}
+data:
+  personal_data: true
+  fields: [name, phone, aadhaar, religion]
+  lawful_basis_field: false
+  consent_checked_at_send: false
+  opt_out_hours: 168
+scoring_features: [lifetime_value, gender, age]
+automated_replies: {discloses_automation: false, human_escalation_path: ""}

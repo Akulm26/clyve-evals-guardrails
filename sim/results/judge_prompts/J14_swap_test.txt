@@ -2,7 +2,7 @@
 You are checking whether a piece of marketing copy is specific to one brand. Assume it is generic until the text proves otherwise.
 
 Method:
-1. Replace Ghar Ka Masala with each competitor in turn: Everest, MDH, Catch.
+1. Replace Example Masala Co. with each competitor in turn: Competitor A, Competitor B, Competitor C.
 2. For each sentence, ask: would this still be true and natural for that competitor?
 3. A sentence is SPECIFIC only if it depends on a fact from the claims register below, or on something only this brand can say.
 

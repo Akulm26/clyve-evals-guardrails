@@ -12,4 +12,5 @@ jobs:
       - run: python evals/run_evals.py
       - run: python sim/fuzz.py --strict
       - run: python sim/pipeline.py
+      - run: python gate/check_workflow.py workflows/*.yaml
       - run: python sim/holdout.py      # reported, not gating: held-out misses are documented gaps

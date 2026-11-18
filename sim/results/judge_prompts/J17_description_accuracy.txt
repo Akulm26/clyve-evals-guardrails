@@ -48,7 +48,7 @@ Canonical description: Lab-tested home-style masalas, ground in Mohali since 201
   }
 ]
 </claims_register>
-Brand aliases: Ghar Ka Masala, GKM
+Brand aliases: Example Masala Co., EMC
 
 1. Was the brand mentioned (any alias)? 
 2. Quote every statement the answer makes about the brand.
@@ -60,5 +60,5 @@ Output JSON only:
 
 ### USER
 <ai_answer engine="chatgpt" prompt_id="b01">
-Ghar Ka Masala is a Mumbai-based spice brand known for organic certification.
+Example Masala Co. is a Mumbai-based spice brand known for organic certification.
 </ai_answer>

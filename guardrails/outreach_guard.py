@@ -4,7 +4,7 @@ message = {
   "channel": "email" | "whatsapp" | "sms" | "instagram_dm" | "inmail",
   "body": str,
   "claims_about_lead": [str, ...],   # every specific fact the message states about the lead
-  "inbox": "akul@clyve.io",
+  "inbox": "outreach@clyve.example",
 }
 lead = {
   "email": str, "phone": str, "category": str, "stage": "prospect" | "audit" | ...,
