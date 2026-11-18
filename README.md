@@ -53,7 +53,7 @@ The report shows up in the run's summary. The step fails if a workflow is BLOCKE
 
 Pure Python, one dependency (`pyyaml`), no API key needed. LLM judges are optional (`pip install "gtm-evals[judges]"`).
 
-Built by [Clyve](https://clyve.io), a boutique AI consulting firm: *Content Strategy and Engineering.*
+Created and maintained by **[Akul S. Malhotra](https://github.com/Akulm26)** ([LinkedIn](https://linkedin.com/in/malhotraakulsuhail/)), founder of [Clyve](https://clyve.io), a boutique AI consulting firm: *Content Strategy and Engineering.*
 
 ---
 
@@ -213,6 +213,12 @@ The most valuable contribution is **a real failure** the guards missed. Add it a
 
 Not legal advice: the compliance mappings help engineers build the right checks. Confirm with counsel for your category and market.
 
+## Author
+
+**Akul S. Malhotra** · [@Akulm26](https://github.com/Akulm26) · founder, [Clyve](https://clyve.io)
+
+If gtm-evals helps you, a ⭐ on the repo or a citation (see [CITATION.cff](CITATION.cff)) is appreciated.
+
 ## License
 
-Apache-2.0.
+Apache-2.0 © 2026 Akul S. Malhotra.

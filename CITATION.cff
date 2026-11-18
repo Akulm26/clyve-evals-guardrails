@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use gtm-evals, please cite it as below."
+title: "gtm-evals: evals and guardrails for AI GTM engineering"
+type: software
+authors:
+  - family-names: Malhotra
+    given-names: Akul S.
+    alias: Akulm26
+version: 0.1.0
+date-released: 2026-11-18
+license: Apache-2.0
+repository-code: "https://github.com/Akulm26/clyve-evals-guardrails"
+keywords: [llm, evals, guardrails, gtm, outbound, marketing-automation, ai-safety]

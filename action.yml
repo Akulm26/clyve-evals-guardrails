@@ -1,6 +1,6 @@
 name: "gtm-evals"
 description: "Evals and guardrails for AI GTM engineering: block AI outbound, content and automation workflows that aren't deployable, safe and ethical."
-author: "Akul (Clyve)"
+author: "Akul S. Malhotra (@Akulm26)"
 branding:
   icon: "shield"
   color: "red"

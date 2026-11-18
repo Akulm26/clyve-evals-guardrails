@@ -8,9 +8,10 @@ version = "0.1.0"
 description = "Evals and guardrails for AI GTM engineering: content ops, AI visibility, outbound and marketing automation. Deployable, safe, ethical."
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
-authors = [{ name = "Akul", email = "hello@clyve.io" }]
+authors = [{ name = "Akul S. Malhotra", email = "46711937+Akulm26@users.noreply.github.com" }]
+maintainers = [{ name = "Akul S. Malhotra (@Akulm26)" }]
 keywords = ["llm", "evals", "guardrails", "gtm", "outbound", "marketing-automation", "ai-safety", "aeo", "geo", "dpdp"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -36,7 +37,7 @@ Issues = "https://github.com/Akulm26/clyve-evals-guardrails/issues"
 packages = ["src/gtm_evals"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/gtm_evals", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
+include = ["src/gtm_evals", "README.md", "LICENSE", "NOTICE", "CHANGELOG.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
