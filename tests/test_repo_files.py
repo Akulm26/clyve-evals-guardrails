@@ -13,7 +13,8 @@ FILES = sorted([*ROOT.glob(".github/workflows/*.yml"), ROOT / "action.yml", *ROO
 @pytest.mark.parametrize("path", FILES, ids=lambda p: str(p.relative_to(ROOT)))
 def test_yaml_parses(path):
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-    assert doc is not None
+    if path.name != "gtm-evals.yaml":   # the user config template is all comments on purpose
+        assert doc is not None
 
 
 @pytest.mark.parametrize("path", sorted(ROOT.glob(".github/workflows/*.yml")), ids=lambda p: p.name)
