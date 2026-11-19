@@ -1,7 +1,7 @@
 """gate.check, one rule at a time, on manifests built in memory."""
 import json
 
-from tests.conftest import real_golden_rows
+from tests.conftest import bind, real_golden_rows
 
 import copy
 
@@ -159,7 +159,7 @@ class TestJudges:
 
     def test_calibrated_judge_without_label_file(self, policy, evidence):
         m = make(**evidence, judges=[{"template": "swap_test", "calibration": {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.85, "runs": 3, "run_disagreement": 0.0, "net": 0.85}}])
-        assert check(m, policy)["verdict"] == "DEPLOYABLE"
+        assert check(bind(m), policy)["verdict"] == "DEPLOYABLE"
 
     @pytest.mark.parametrize("kappa", [None, 0.6])
     def test_judge_needs_two_labellers(self, kappa, policy, evidence):
@@ -188,7 +188,7 @@ class TestJudges:
     def test_label_file_backs_the_claim(self, policy, evidence, write_labels):
         m = make(**evidence, judges=[{"template": "swap_test", "labels": str(write_labels(15, 15, blank=5)),
                                       "calibration": {"labelled_cases": 30, "agreement": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}}])
-        assert check(m, policy)["verdict"] == "DEPLOYABLE"
+        assert check(bind(m), policy)["verdict"] == "DEPLOYABLE"
 
     def test_missing_label_file(self, policy, evidence):
         m = make(**evidence, judges=[{"template": "swap_test", "labels": "nope.csv",
@@ -201,7 +201,7 @@ class TestJudges:
         write_labels(15, 15).rename(sub / "l.csv")
         m = make(golden_set="g.jsonl", judges=[{"template": "swap_test", "labels": "l.csv",
                                                 "calibration": {"labelled_cases": 30, "agreement": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}}])
-        assert check(m, policy, base_dir=sub)["verdict"] == "DEPLOYABLE"
+        assert check(bind(m, sub), policy, base_dir=sub)["verdict"] == "DEPLOYABLE"
 
 
 def test_report_lists_every_check(policy, evidence):
@@ -240,4 +240,4 @@ class TestRepeatRuns:
         policy["evidence"]["require_repeat_runs"] = False
         m = make(**evidence, judges=[{"template": "swap_test", "calibration": {"labelled_cases": 30, "agreement": 0.9,
                                                                                "kappa": 0.9}}])
-        assert check(m, policy)["verdict"] == "DEPLOYABLE"
+        assert check(bind(m), policy)["verdict"] == "DEPLOYABLE"

@@ -48,7 +48,7 @@ class TestOneClickUnsubscribe:
         assert bool(run(outbound, policy, ctx={"bulk_sender": bulk})) is ok
 
     def test_dms_never_need_headers(self, outbound, policy):
-        assert run(outbound, policy, msg={"channel": "instagram_dm"}, ctx={"bulk_sender": True})
+        assert run(outbound, policy, msg={"channel": "inmail"}, ctx={"bulk_sender": True})
 
 
 class TestDmarcAlignment:

@@ -56,3 +56,12 @@ flowchart LR
 | A sender account gets restricted for sending too many InMails, LinkedIn or Instagram DMs | `outreach_guard`: `daily_cap_per_channel`, with `context["sent_today_by_channel"]` |
 
 In this lane, a workflow with `crm_update` must wire in `enrichment_guard` or the gate blocks it.
+
+
+## Added in 0.2.0
+
+| Failure | Guard |
+|---|---|
+| A cold Instagram DM to a founder who never messaged you | `outreach_guard`: a reply within 24 hours of their message, or one private reply to their comment within 7 days |
+| Lead scoring on `pincode` or `surname`, which can stand in for caste or religion | the gate blocks unless `fairness_tests` shows an impact ratio ≥ 0.80 |
+| A research note turns "unknown" into "Series A (verified)" | an assertion case: `guard: assert` with `must_demonstrate` / `must_avoid` |

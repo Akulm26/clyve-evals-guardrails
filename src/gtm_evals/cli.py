@@ -61,6 +61,41 @@ def cmd_init(a):
           "\n  5. gtm-evals judge labels <judge>           a labelling sheet to calibrate an LLM judge")
 
 
+def cmd_redteam(a):
+    import yaml
+
+    from . import redteam
+    p = _policy(a)
+    if a.action == "init":
+        m = yaml.safe_load(Path(a.path).read_text(encoding="utf-8")) or {}
+        cfg = redteam.config(m, p)
+        canary = cfg["metadata"]["gtm_evals_canary"]
+        text = yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True)
+        if a.out:
+            Path(a.out).write_text(text, encoding="utf-8")
+            print(f"wrote {a.out} ({len(cfg['redteam']['plugins'])} plugins)")
+        else:
+            print(text)
+        if not (m.get("redteam") or {}).get("canary"):
+            print(f"ℹ️ put this canary in the bot's system prompt and in the manifest (redteam.canary): {canary}",
+                  file=sys.stderr)
+        return 0
+    canary = a.canary
+    if a.manifest:
+        canary = canary or ((yaml.safe_load(Path(a.manifest).read_text(encoding="utf-8")) or {}).get("redteam") or {}).get("canary")
+    s = redteam.score(a.path, canary, p)
+    rc = p["redteam"]
+    print(f"{OK if s['ok'] else NO} {s['passed']}/{s['total']} red-team tests passed ({s['pass_rate']:.0%}; "
+          f"gate: ≥ {rc['min_pass_rate']:.0%} on ≥ {rc['min_tests']})")
+    for k, b in s["by_plugin"].items():
+        print(f"  {k:28} {b['passed']}/{b['tests']}")
+    if not canary:
+        print("ℹ️ no canary given: system-prompt leaks weren't checked")
+    elif s["leaks"]:
+        print(f"{NO} the canary leaked in {len(s['leaks'])} reply(ies): the bot reveals its instructions")
+    return 0 if s["ok"] else 1
+
+
 def cmd_gate(a):
     import yaml
     p = _policy(a)
@@ -87,6 +122,8 @@ def cmd_eval(a):
             print(f"{NO} {path}: {e}", file=sys.stderr)
             return 2
         print(f"\n{path}  ·  {res['n']} cases ({res['real']} real)")
+        if res.get("human_review"):
+            print(f"  ℹ️ {len(res['human_review'])} case(s) marked human_review: a person decides, not scored: {res['human_review']}")
         for g, s in res["guards"].items():
             print(f"  {OK if s['ok'] else NO} {g:17} recall {s['recall']:.2f}  precision {s['precision']:.2f}"
                   + (f"  misses: {s['misses']}" if s["misses"] else "") + (f"  false alarms: {[x for x, _ in s['false_alarms']]}" if s["false_alarms"] else ""))
@@ -235,6 +272,25 @@ def cmd_judge(a):
         print(f"{c['labelled']}/30 labelled · {c['pass']} pass · {c['fail']} fail · "
               + ("ready to calibrate" if ready else "not ready (need 30, with ≥10 pass and ≥10 fail)"))
         return 0 if ready else 1
+    if a.action == "packet":
+        if not a.dataset:
+            print(f"{NO} packet needs a label file: gtm-evals judge packet {a.template} labels.csv --id L01", file=sys.stderr)
+            return 2
+        rows = [r for r in load_rows(a.dataset) if not a.id or str(r.get("id")) == a.id]
+        if not rows:
+            print(f"{NO} no row with id {a.id}", file=sys.stderr)
+            return 2
+        try:
+            text = "\n---\n\n".join(judges.packet(t, r) for r in rows)
+        except ValueError as e:
+            print(f"{NO} {e}", file=sys.stderr)
+            return 1
+        if a.out:
+            Path(a.out).write_text(text, encoding="utf-8")
+            print(f"wrote {len(rows)} blind packet(s) to {a.out}: no labels, notes or expected answers")
+        else:
+            print(text)
+        return 0
     if a.action == "calibrate":
         import os
         if not a.dataset:
@@ -267,7 +323,9 @@ def cmd_judge(a):
         if a.update:
             ok = judges.update_manifest(a.update, Path(a.template).stem, res["labelled_cases"], res["agreement"],
                                         res.get("kappa"), extra={"net": round(res["net"], 2), "runs": res["runs"],
-                                                                 "run_disagreement": round(res["run_disagreement"], 2)})
+                                                                 "run_disagreement": round(res["run_disagreement"], 2),
+                                                                 **judges.evidence_binding(a.template, a.dataset, a.model),
+                                                                 "commit": judges.git_commit()})
             print(f"{'updated' if ok else 'no judge entry for this template in'} {a.update}")
         good = (res["complete"] and res["labelled_cases"] >= 30 and res["agreement"] >= 0.85
                 and res["net"] >= ev["min_judge_net"] and res["run_disagreement"] <= ev["max_run_disagreement"])
@@ -293,6 +351,10 @@ def main(argv=None):
         p.add_argument("--profile", help=f"preset layered under your config: {', '.join(list_profiles())}")
 
     p = sub.add_parser("init", help="scaffold config, a workflow manifest and a golden set"); p.add_argument("dir", nargs="?", default="."); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_init)
+    p = sub.add_parser("redteam", help="promptfoo red-team config from the policy, and scoring its results")
+    p.add_argument("action", choices=["init", "score"]); p.add_argument("path", help="init: a workflow manifest · score: promptfoo results.json")
+    p.add_argument("-o", "--out"); p.add_argument("--canary"); p.add_argument("--manifest", help="score: read the canary from here")
+    common(p); p.set_defaults(fn=cmd_redteam)
     p = sub.add_parser("gate", help="rule workflows DEPLOYABLE / PILOT ONLY / BLOCKED"); p.add_argument("manifests", nargs="+"); p.add_argument("--base", help="resolve golden-set paths from here"); p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_gate)
     p = sub.add_parser("eval", help="score guards on golden sets"); p.add_argument("golden", nargs="+"); common(p); p.set_defaults(fn=cmd_eval)
     p = sub.add_parser("check", help="run text guards on a draft ('-' for stdin)"); p.add_argument("file"); p.add_argument("--register", help="claims register JSON"); p.add_argument("--json", action="store_true")
@@ -306,13 +368,15 @@ def main(argv=None):
     p.add_argument("--entity", help='JSON: {"canonical": {...}, "profiles": {channel: {name, description}}}')
     p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_seo)
     p = sub.add_parser("visibility", help="did AI visibility really move?"); p.add_argument("runs"); p.add_argument("--before", default="day0"); p.add_argument("--after", default="day30"); p.add_argument("--engine"); common(p); p.set_defaults(fn=cmd_visibility)
-    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "agreement", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
+    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "agreement", "calibrate", "packet"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
     p.add_argument("--rows", type=int, default=30, help="labels: number of blank rows"); p.add_argument("--force", action="store_true")
     p.add_argument("--update", metavar="MANIFEST", help="calibrate: write the result into this workflow manifest")
     p.add_argument("--runs", type=int, help="calibrate: judge each row this many times (default: policy evidence.judge_runs)")
     p.add_argument("--cache", default=".gtm-evals-cache/judges", help="calibrate: where judge results are cached")
     p.add_argument("--no-cache", action="store_true", help="calibrate: always call the model")
     p.add_argument("--max-calls", type=int, help="calibrate: stop before making more model calls than this")
+    p.add_argument("--id", help="packet: only this row")
+    p.add_argument("-o", "--out", help="packet: write to this file")
     p.add_argument("--var", dest="vars", action="append", help="key=value"); p.add_argument("--var-file", action="append", help="key=path (file contents become the value)"); p.add_argument("--model"); p.set_defaults(fn=cmd_judge)
     p = sub.add_parser("policy", help="print the effective policy"); p.add_argument("--show", action="store_true"); p.add_argument("--profiles", action="store_true"); common(p); p.set_defaults(fn=cmd_policy)
 

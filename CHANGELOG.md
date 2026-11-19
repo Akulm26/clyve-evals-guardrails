@@ -2,7 +2,22 @@
 
 ## Unreleased (0.2.0)
 
-Phases 0, 1 and 2 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+Phases 0 to 3 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+
+### Phase 3 · Coverage + test honesty
+
+Guardrails
+- **Proxies for protected traits.** Scoring on `pincode`, `surname`, `community` and similar (`deployment_gate.proxies.fields`) is blocked unless the manifest attaches a fairness test (`fairness_tests: {pincode: tests.csv}`). The test passes at an impact ratio ≥ 0.80 (four-fifths rule), with ≥ 30 rows in each of at least two groups. New module: `fairness`.
+- **Hinglish and Hindi.** Romanised Hindi and Devanagari patterns in `claim_safety_guard` ("sardi ka ilaaj", "sugar khatam", "इलाज"), `manipulation_guard` ("sirf 2 slot bache", "aakhri mauka", "जल्दी करें") and `promise_guard` ("result pakka", "गारंटी").
+- **Instagram.** No cold DMs: a reply within 24 hours of the person's last message, or one private reply to their comment within 7 days.
+- **WhatsApp scope lock.** On WhatsApp, an off-scope request ("write my essay") must get `decline` or `escalate`. This is a cautious reading of Meta's terms in force since 15 Jan 2026.
+
+Evals
+- **Assertion cases.** Golden rows with `guard: assert` check an output against `must_demonstrate` and `must_avoid` patterns. Rows marked `human_review: true` are listed, not scored, and don't count as gate evidence.
+- **Blind packets.** `gtm-evals judge packet <template> labels.csv [--id L01] [-o packet.md]` writes exactly what the judge sees: no labels, notes or expected answers. A template that would show the judge a hidden field is refused.
+- **Bound evidence.** `calibrate --update` records `template_hash`, `labels_hash`, `model` and `commit`. Editing the template, relabelling or swapping the model sends the workflow back to PILOT ONLY (`evidence.require_bound_evidence`).
+- **Red-team set.** `gtm-evals redteam init|score` builds a promptfoo config from the policy and scores its results. Workflows that reply to people need ≥ 50 tests and ≥ 95% passed; a leaked canary blocks.
+- 15 golden cases (p3-01 to p3-15); 99 in `evals/lanes.jsonl`.
 
 ### Phase 2 · Honest social proof + honest judges
 

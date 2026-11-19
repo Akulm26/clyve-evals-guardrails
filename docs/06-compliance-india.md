@@ -37,6 +37,9 @@
 - **Escalation.** Automation in the window must offer a clear path to a human: agent transfer, phone or email. [Rasayel]
 - **Template categories.** A template that mixes utility content with promotion is classed as marketing. [SleekFlow]
 
+- **No general-purpose assistants.** Since 15 Jan 2026, Meta's Business Solution terms bar AI providers from using the platform to distribute general-purpose assistants; support, bookings, order tracking and sales bots stay allowed. [TechCrunch; respond.io]
+
+→ On WhatsApp, `automation_guard.check_reply(..., context={"channel": "whatsapp"})` makes an off-scope request ("write my essay", "help with homework") get `decline` or `escalate`. This is a cautious reading: the terms target AI providers, but a brand bot that answers anything is the pattern they describe.
 → `outreach_guard` requires `whatsapp` in the contact's `optin_channels`. `automation_guard` requires `template_approved: true`. The reply agent always has `escalate` as an allowed action. Keep utility templates free of offers.
 
 ## Email: Gmail / Yahoo bulk-sender rules
@@ -47,6 +50,16 @@
 - **Unsubscribe timing.** One-click unsubscribe must follow RFC 8058, and unsubscribe requests must be processed within 48 hours. [Red Sift]
 
 → The policy stops sending at a 0.1% complaint rate (`stop_spam_complaint_rate: 0.001`) and checks the SPF/DKIM/DMARC flags. Cold outreach at Clyve's volume sits well below the bulk threshold, but follow the same rules anyway. Once a domain is classified as a bulk sender, that classification is permanent. [OneSignal]
+
+## Instagram messaging
+
+A business account can message someone who messaged it in the last 24 hours, or send one private reply to their comment within 7 days†. No cold DMs. → `outreach_guard` reads `lead.ig_last_inbound_at`, `lead.ig_comment_at` and `message.private_reply_to_comment`.
+
+† From Meta's developer documentation as summarised by secondary sources; verify against the current Instagram Platform docs.
+
+## Hinglish and Hindi
+
+Claims and pressure often arrive in romanised Hindi or Devanagari. The claim-safety, pressure and promise guards carry patterns for both ("sardi ka ilaaj", "sirf 2 slot bache", "result pakka", "इलाज", "जल्दी करें"). Coverage is a starting set: add the phrases your approvers keep catching.
 
 ## Advertising claims (ASCI; FSSAI for food and supplements)
 

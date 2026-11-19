@@ -35,3 +35,12 @@ Automation failures are **volume failures**. One wrong condition doesn't make on
 - If a flow's audience size jumps more than 3× from its last run → stop and ask. It's almost always a broken filter.
 - If an inbound reply mentions money, legal, health or a complaint → route to a human. The AI drafts, never sends.
 - If you build flows for more than one client in one n8n instance → tenant checks are mandatory on every send node, not optional.
+
+
+## Added in 0.2.0
+
+| Failure | Guard |
+|---|---|
+| The WhatsApp reply bot answers "write my essay" like a general assistant | `automation_guard.check_reply(..., context={"channel": "whatsapp"})`: off-scope requests must get `decline` or `escalate` |
+| "Sirf 2 slot bache", "aakhri mauka" slip past English-only patterns | `manipulation_guard` (Hinglish and Devanagari) |
+| A bot that replies to people ships without being attacked first | the gate needs promptfoo red-team results (`gtm-evals redteam init`), and blocks on a leaked canary |

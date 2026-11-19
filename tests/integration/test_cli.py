@@ -269,8 +269,10 @@ class TestJudge:
         assert code == 0 and "agreement 94% on 32" in out and len(calls) == 96       # 3 runs per row
         assert "net score +0.88" in out and "runs disagreed on 0% of rows" in out and "96 model calls" in out
         assert "disagree  L01: judge fail, human pass" in out and f"updated {wf}" in out
-        assert yaml.safe_load(wf.read_text())["judges"][0]["calibration"] == {"labelled_cases": 32, "agreement": 0.94, "kappa": 1.0,
-                                                                         "net": 0.88, "runs": 3, "run_disagreement": 0.0}
+        from gtm_evals.judges import evidence_binding
+        cal = yaml.safe_load(wf.read_text())["judges"][0]["calibration"]
+        assert cal == {"labelled_cases": 32, "agreement": 0.94, "kappa": 1.0, "net": 0.88, "runs": 3, "run_disagreement": 0.0,
+                       **evidence_binding("personalisation_factuality", labels)}     # no commit: tmp dir isn't a repo
         calls.clear()   # a rerun reads the cache: no model calls
         code, out, _ = run_cli("judge", "calibrate", "personalisation_factuality", labels)
         assert code == 0 and len(calls) == 0

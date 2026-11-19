@@ -176,3 +176,17 @@ def stub_judge(monkeypatch):
         monkeypatch.setattr(judges, "run", fake)
         return calls
     return _install
+
+
+def bind(manifest, base=None):
+    """Stamp each judge's calibration with the template, labels and model hashes, as `calibrate --update` does."""
+    from pathlib import Path
+
+    from gtm_evals.judges import evidence_binding
+    for j in manifest.get("judges", []):
+        lp = j.get("labels")
+        if lp and base and not Path(lp).is_absolute():
+            lp = Path(base) / lp
+        j.setdefault("calibration", {}).update(evidence_binding(j["template"], lp if lp and Path(lp).exists() else None,
+                                                                j.get("model")))
+    return manifest

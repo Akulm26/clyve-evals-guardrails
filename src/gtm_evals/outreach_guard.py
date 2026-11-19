@@ -12,6 +12,8 @@ lead = {
   "optin_channels": [..],
   "signals": [{"fact": str, "source_url": str, "date": "YYYY-MM-DD"}],
 }
+Instagram DMs also read lead["ig_last_inbound_at"], lead["ig_comment_at"], message["private_reply_to_comment"]
+and context["now"] (ISO datetime; defaults to the start of "today").
 context = {"today": "YYYY-MM-DD", "suppression": set(), "sent_today_by_inbox": {inbox: n}, "bulk_sender": bool,
            "sent_today_by_channel": {"inmail": n, "instagram_dm": n, ...},   # this sender account, today
            "sender_auth": {"spf": True, "dkim": True, "dmarc": True}}
@@ -19,13 +21,38 @@ context = {"today": "YYYY-MM-DD", "suppression": set(), "sent_today_by_inbox": {
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from .core import Verdict
 
 
 def _d(s: str) -> date:
     return date.fromisoformat(s)
+
+
+def _dt(x) -> datetime | None:
+    if not x:
+        return None
+    d = datetime.fromisoformat(str(x).replace("Z", "+00:00"))
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def _instagram_problems(message: dict, lead: dict, context: dict, cfg: dict) -> list[str]:
+    """No cold DMs: a reply inside 24 hours of their message, or one private reply to their comment within 7 days."""
+    ig = cfg["instagram"]
+    now = _dt(context.get("now")) or datetime.combine(_d(context["today"]), datetime.min.time(), timezone.utc)
+    last = _dt(lead.get("ig_last_inbound_at"))
+    if last and now - last <= timedelta(hours=ig["reply_window_hours"]):
+        return []
+    comment = _dt(lead.get("ig_comment_at"))
+    if message.get("private_reply_to_comment"):
+        if comment and now - comment <= timedelta(days=ig["comment_reply_days"]):
+            return []
+        return [f"private reply to a comment must go within {ig['comment_reply_days']} days of the comment"]
+    if last:
+        return [f"Instagram DM outside the {ig['reply_window_hours']}-hour window since their last message"]
+    return ["cold Instagram DM: a business may only message someone who messaged it first "
+            f"(within {ig['reply_window_hours']} hours) or reply privately to their comment"]
 
 
 def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
@@ -42,6 +69,8 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
         v.append("contact is on the suppression list")
     if not lead.get("lawful_basis"):
         v.append("no lawful basis recorded for this contact")
+    if channel == "instagram_dm" and "instagram" in cfg:
+        v.extend(_instagram_problems(message, lead, context, cfg))
     if channel in cfg["optin_required_for"] and channel not in lead.get("optin_channels", []):
         v.append(f"no {channel} opt-in on record")
     cat = re.sub(r"[-_/]+", " ", (lead.get("category") or "").lower())

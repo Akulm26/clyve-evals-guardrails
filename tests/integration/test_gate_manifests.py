@@ -1,6 +1,6 @@
 import json
 
-from tests.conftest import real_golden_rows
+from tests.conftest import bind, real_golden_rows
 import copy
 import sys
 from pathlib import Path
@@ -35,7 +35,7 @@ def test_deployable_when_evidence_real(tmp_path, monkeypatch):
                       + "\n".join(f"L{i},msg,{v},{v}" for i in range(30) for v in ['pass' if i % 2 else 'fail']))
     m["judges"][0]["labels"] = str(labels)
     m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}
-    assert check(m, P)["verdict"] == "DEPLOYABLE"
+    assert check(bind(m), P)["verdict"] == "DEPLOYABLE"
 
 
 def test_calibration_cannot_claim_more_labels_than_the_file_has(tmp_path):

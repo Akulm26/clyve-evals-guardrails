@@ -50,7 +50,7 @@ class TestHygiene:
 
     def test_unsubscribe_not_required_on_dm(self, outbound, policy):
         body = outbound[0]["body"].replace(" If not relevant, reply stop and I won't write again.", "")
-        assert run(outbound, policy, msg={"body": body, "channel": "instagram_dm"})
+        assert run(outbound, policy, msg={"body": body, "channel": "inmail"})
 
     def test_sender_auth(self, outbound, policy):
         v = run(outbound, policy, ctx={"sender_auth": {"spf": True}})

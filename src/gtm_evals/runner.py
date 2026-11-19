@@ -12,6 +12,7 @@ source ∈ real | synthetic  (only "real" rows count toward deployment evidence)
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dark_pattern_guard, dpdp_guard,
@@ -47,7 +48,7 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
     if g == "automation_send":
         return automation_guard.check_send(x["event"], x.get("history", []), policy)
     if g == "automation_reply":
-        return automation_guard.check_reply(x["proposed"], x["inbound"], policy)
+        return automation_guard.check_reply(x["proposed"], x["inbound"], policy, x.get("context"))
     if g == "deliverability":
         return outreach_guard.deliverability(x["stats"], policy)
     if g == "visibility_rows":
@@ -67,6 +68,8 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":
         return enrichment_guard.check_write(x["record"], policy, x["today"])
+    if g == "assert":
+        return check_assertions(x["output"], x.get("must_demonstrate", []), x.get("must_avoid", []))
     if g == "ai_seo_crawlers":
         return ai_seo_guard.crawler_access(x.get("robots"), policy, x.get("path", "/"))
     if g == "ai_seo_page":
@@ -75,6 +78,15 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
     if g == "ai_seo_entity":
         return ai_seo_guard.entity_consistency(x["profiles"], x["canonical"], policy)
     raise ValueError(f"unknown guard '{g}' in case {row.get('id')}")
+
+
+def check_assertions(output: str, must_demonstrate: list[str], must_avoid: list[str]) -> Verdict:
+    """An assertion case: the output must show each `must_demonstrate` pattern and none of `must_avoid`.
+    e.g. a research note must say "unknown" where it has no source, and must never upgrade "proposed" to "verified"."""
+    v = [f"doesn't demonstrate: {p}" for p in must_demonstrate if not re.search(p, output or "", re.I | re.S)]
+    v += [f"does what it must avoid: '{m.group(0)}'" for p in must_avoid
+          for m in [re.search(p, output or "", re.I | re.S)] if m]
+    return Verdict.from_violations("assertions", v)
 
 
 def load_rows(path: str | Path) -> list[dict]:
@@ -97,7 +109,11 @@ def load_rows(path: str | Path) -> list[dict]:
 def score(rows: list[dict], policy: dict, base: Path) -> dict:
     """Positive class = 'should be blocked'. Returns per-guard recall/precision and the misses."""
     per: dict[str, dict] = {}
+    review = []
     for r in rows:
+        if r.get("human_review"):
+            review.append(r.get("id"))   # a person decides this one; it isn't scored or counted as evidence
+            continue
         v = run_case(r, policy, base)
         s = per.setdefault(r["guard"], {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "misses": [], "false_alarms": []})
         if "expected_pass" not in r:
@@ -116,5 +132,6 @@ def score(rows: list[dict], policy: dict, base: Path) -> dict:
         s["recall"] = s["tp"] / (s["tp"] + s["fn"]) if s["tp"] + s["fn"] else 1.0
         s["precision"] = s["tp"] / (s["tp"] + s["fp"]) if s["tp"] + s["fp"] else 1.0
         s["ok"] = s["recall"] >= ev["min_recall_must_block"] and s["precision"] >= ev["min_precision"]
-    real = sum(1 for r in rows if r.get("source") == "real")
-    return {"guards": per, "n": len(rows), "real": real, "ok": all(s["ok"] for s in per.values())}
+    real = sum(1 for r in rows if r.get("source") == "real" and not r.get("human_review"))
+    return {"guards": per, "n": len(rows) - len(review), "real": real, "human_review": review,
+            "ok": all(s["ok"] for s in per.values())}

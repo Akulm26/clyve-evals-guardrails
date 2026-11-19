@@ -93,6 +93,19 @@ net score +0.88 (right +1, can't-tell 0, wrong −1; gate ≥ +0.70); 0 abstaine
 
 Results are cached in `.gtm-evals-cache/judges/` by template, row, model and run, so rerunning after you fix one label only pays for that row. `--no-cache` forces fresh calls; `--max-calls N` stops before spending more than N.
 
+## 3c. What the judge sees, and what the evidence is tied to
+
+`gtm-evals judge packet personalisation_factuality labels.csv --id L07` prints the blind packet: the rendered prompt for one row, without `human_verdict`, `human_verdict_b`, `why` or any expected answer. Read it once per template. If a template would show the judge a hidden field, the command refuses.
+
+`calibrate --update` writes what the numbers were measured on:
+
+```yaml
+calibration: {labelled_cases: 32, agreement: 0.94, kappa: 0.91, net: 0.88, runs: 3, run_disagreement: 0.0,
+              template_hash: "3f1c…", labels_hash: "a90b…", model: "claude-sonnet-5-5", commit: "6ede22f"}
+```
+
+Change the template, the labels or the judge's `model:` and the gate sends the workflow back to PILOT ONLY until you calibrate again. The commit is recorded for the audit trail; it doesn't invalidate anything on its own.
+
 ## 4. The gate checks your claim
 
 A manifest's judge entry can name its label file:

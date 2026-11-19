@@ -45,6 +45,53 @@ def normalise(out: dict) -> str:
     return "pass" if raw in PASS_WORDS else "fail"
 
 
+def resolve_model(model: str | None = None) -> str:
+    return model or os.environ.get("JUDGE_MODEL", "claude-sonnet-5-5")
+
+
+def _h(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()[:12]
+
+
+def labels_fingerprint(rows: list[dict]) -> str:
+    """Hash of what the labels say (id + both verdicts), so reformatting the sheet doesn't count as a change."""
+    keep = sorted((str(r.get("id")), str(r.get("human_verdict")), str(r.get("human_verdict_b")))
+                  for r in rows if r.get("human_verdict") is not None)
+    return _h(repr(keep).encode("utf-8"))
+
+
+def evidence_binding(template: str, labels_path=None, model: str | None = None) -> dict:
+    """What a calibration was measured on: the template's text, the labels and the judge model.
+    Change any of them and the calibration no longer describes the judge you're running."""
+    out = {"template_hash": _h(load_template(template).encode("utf-8")), "model": resolve_model(model)}
+    if labels_path:
+        from .runner import load_rows
+        out["labels_hash"] = labels_fingerprint(load_rows(labels_path))
+    return out
+
+
+def git_commit(cwd=None) -> str | None:
+    import subprocess
+    try:
+        r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=cwd, timeout=5)
+        return r.stdout.strip() or None if r.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def packet(template: str, row: dict) -> str:
+    """The blind packet: exactly what the judge sees for one row, and nothing else.
+    No human labels, no notes, no assertions, no expected answer, no model or tool names."""
+    hidden = {"human_verdict", "human_verdict_b", "why", "expected", "expected_pass", "must_demonstrate",
+              "must_avoid", "human_review", "model", "generator", "tool", "labeller", "labeller_b"}
+    leaked = sorted(set(template_vars(template)) & hidden)
+    if leaked:
+        raise ValueError(f"row {row.get('id')}: the template would show the judge {', '.join(leaked)}")
+    system, user = render(template, {k: v for k, v in row.items() if k not in hidden})
+    return f"# Judge packet · {row.get('id', '?')}\n\n## System\n\n{system}\n\n## User\n\n{user}\n"
+
+
 def run(template: str, values: dict, model: str | None = None) -> dict:
     try:
         import anthropic  # optional dependency
@@ -52,7 +99,7 @@ def run(template: str, values: dict, model: str | None = None) -> dict:
         raise RuntimeError('running a judge needs the judges extra: pip install "gtm-evals[judges]"') from e
 
     system, user = render(template, values)
-    msg = anthropic.Anthropic().messages.create(model=model or os.environ.get("JUDGE_MODEL", "claude-sonnet-5-5"),
+    msg = anthropic.Anthropic().messages.create(model=resolve_model(model),
                                                 max_tokens=800, system=system, messages=[{"role": "user", "content": user}])
     text = msg.content[0].text
     try:
@@ -187,7 +234,10 @@ def update_manifest(path, template_name: str, labelled_cases: int, agreement: fl
                 if m:
                     kap = f", kappa: {kappa:.2f}" if kappa is not None else ""
                     for key, val in (extra or {}).items():
-                        kap += f", {key}: {val:.2f}" if isinstance(val, float) else f", {key}: {val}"
+                        if val is None:
+                            continue
+                        kap += (f", {key}: {val:.2f}" if isinstance(val, float)
+                                else f', {key}: "{val}"' if isinstance(val, str) else f", {key}: {val}")
                     lines[k] = (f"{m.group(1)}calibration: {{labelled_cases: {labelled_cases}, "
                                 f"agreement: {agreement:.2f}{kap}}}     # gtm-evals judge calibrate\n")
                     p.write_text("".join(lines), encoding="utf-8")

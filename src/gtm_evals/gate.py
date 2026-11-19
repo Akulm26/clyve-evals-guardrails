@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from . import redteam
 from .action_gate import ActionGate
 from .evidence import agreement, required_cases, strata_shortfall
 
@@ -69,6 +70,14 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     if any(a in actions for a in ("crm_update", "client_crm_bulk_write")) and lane == "gtm_engineering":
         safe.append(("enrichment_guard" in guards, "CRM writes go through enrichment_guard (sourced, dated, allowed fields)"))
 
+    if redteam.needed(manifest, policy):
+        rt = manifest.get("redteam") or {}
+        rp = next((b / rt["results"] for b in _BASE if rt.get("results") and (b / rt["results"]).exists()), None)
+        if rp is not None and rt.get("canary"):
+            leaks = redteam.score(rp, rt["canary"], policy)["leaks"]
+            safe.append((not leaks, "red team: the bot never leaked its system prompt (canary)"
+                         + (f" (leaked in {len(leaks)} test(s))" if leaks else "")))
+
     # ---------- ETHICAL ----------
     data = manifest.get("data", {})
     if data.get("personal_data"):
@@ -80,6 +89,22 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     feats = [f.lower() for f in manifest.get("scoring_features", [])]
     prot = [f for f in feats if f in g["protected_attributes"]]
     ethical.append((not prot, "no protected attribute is used to score, rank or target people" + (f" (found: {prot})" if prot else "")))
+    px = g.get("proxies", {})
+    tests = manifest.get("fairness_tests", {}) or {}
+    for f in [f for f in feats if f in px.get("fields", [])]:
+        path = tests.get(f)
+        fp = next((b / path for b in _BASE if path and (b / path).exists()), None)
+        if fp is None:
+            ethical.append((False, f"'{f}' can stand in for a protected trait: attach a fairness test "
+                                   f"(fairness_tests: {{{f}: tests.csv}})" + (f" — {path} not found" if path else "")))
+            continue
+        from .fairness import impact_ratio
+        from .runner import load_rows
+        res = impact_ratio(load_rows(fp), min_group=px.get("min_rows_per_group", 30))
+        ok = res["ratio"] is not None and res["ratio"] >= px["min_impact_ratio"]
+        ethical.append((ok, f"'{f}' doesn't track a protected group (impact ratio ≥ {px['min_impact_ratio']:.2f}; "
+                            + (f"has {res['ratio']:.2f}" if res["ratio"] is not None else "needs 2+ groups of "
+                               f"≥ {px.get('min_rows_per_group', 30)} rows") + ")"))
     rep = manifest.get("automated_replies")
     if rep:
         ethical.append((bool(rep.get("discloses_automation")), "automated replies say they are automated"))
@@ -96,7 +121,7 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     claim = manifest.get("claims") or {}
     rate, margin = claim.get("precision", ev["default_rate"]), claim.get("margin", ev["default_margin"])
     need = max(g["min_real_golden_cases"], required_cases(rate, margin, ev["confidence"]))
-    real_rows = [r for r in (rows or []) if r.get("source") == "real"]
+    real_rows = [r for r in (rows or []) if r.get("source") == "real" and not r.get("human_review")]
     deploy.append((len(real_rows) >= need, f"≥ {need} real cases to show {rate:.0%} ±{margin:.0%} at "
                                             f"{ev['confidence']:.0%} confidence (has {len(real_rows)})"))
     short = strata_shortfall(real_rows, need, claim.get("strata", ev["strata"]))
@@ -121,6 +146,19 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
                 deploy.append((claimed <= have, f"calibration for '{j.get('template')}' matches its label file "
                                                 f"(claims {claimed}, file has {have} labelled)"))
                 kappa = agr["kappa"] if agr["second_labeller"] else None
+        if ev.get("require_bound_evidence"):
+            from .judges import evidence_binding
+            lp = next((b / j["labels"] for b in _BASE if j.get("labels") and (b / j["labels"]).exists()), None)
+            try:
+                now = evidence_binding(j.get("template", ""), lp, j.get("model"))
+            except (FileNotFoundError, OSError):
+                now = {}
+            changed = [k for k in ("template_hash", "labels_hash", "model") if k in now and cal.get(k) != now[k]]
+            what = {"template_hash": "template", "labels_hash": "labels", "model": "model"}
+            deploy.append((bool(now) and not changed,
+                           f"judge '{j.get('template')}' evidence is for this template, labels and model"
+                           + (f" ({', '.join(what[k] for k in changed)} changed since calibration: re-run calibrate --update)"
+                              if changed else "")))
         if ev.get("require_repeat_runs"):
             runs, split, net = cal.get("runs", 1), cal.get("run_disagreement"), cal.get("net")
             deploy.append((runs >= ev["judge_runs"] and split is not None and split <= ev["max_run_disagreement"],
@@ -134,6 +172,17 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
             deploy.append((kappa is not None and kappa >= ev["min_kappa"],
                            f"judge '{j.get('template')}' labels agreed by two labellers (κ ≥ {ev['min_kappa']:.2f}"
                            + (f", has {kappa:.2f})" if kappa is not None else ", no second labeller)")))
+    if redteam.needed(manifest, policy):
+        rt = manifest.get("redteam") or {}
+        rc = policy["redteam"]
+        rp = next((b / rt["results"] for b in _BASE if rt.get("results") and (b / rt["results"]).exists()), None)
+        if rp is None or not rt.get("canary"):
+            deploy.append((False, "red-team results attached (redteam: {canary, results}; see gtm-evals redteam init)"))
+        else:
+            s = redteam.score(rp, rt["canary"], policy)
+            deploy.append((s["total"] >= rc["min_tests"] and s["pass_rate"] >= rc["min_pass_rate"],
+                           f"red team: ≥ {rc['min_tests']} tests, ≥ {rc['min_pass_rate']:.0%} passed "
+                           f"(has {s['total']}, {s['pass_rate']:.0%})"))
     deploy.append((bool(manifest.get("owner")), "a named owner"))
 
     if not all(o for o, _ in safe + ethical):

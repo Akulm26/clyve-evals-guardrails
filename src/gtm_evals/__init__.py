@@ -18,12 +18,14 @@ from . import (  # noqa: F401
     dpdp_guard,
     enrichment_guard,
     evidence,
+    fairness,
     injection_guard,
     likeness_guard,
     manipulation_guard,
     outreach_guard,
     pii_guard,
     promise_guard,
+    redteam,
     testimonial_guard,
     visibility_stats,
 )
@@ -42,4 +44,4 @@ __all__ = ["ActionGate", "Verdict", "combine", "load_policy", "list_profiles", "
            "claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
            "automation_guard", "manipulation_guard", "visibility_stats",
            "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard",
-           "testimonial_guard", "likeness_guard", "dark_pattern_guard", "evidence"]
+           "testimonial_guard", "likeness_guard", "dark_pattern_guard", "evidence", "fairness", "redteam"]

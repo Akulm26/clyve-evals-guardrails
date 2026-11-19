@@ -120,12 +120,24 @@ def _trai(event: dict, contact: dict, channel: str, ts: datetime, is_promo: bool
     return v
 
 
-def check_reply(proposed: dict, inbound_text: str, policy: dict) -> Verdict:
-    """proposed = {"action": str, "text": str}. AI reply agent output for an inbound message."""
+def check_reply(proposed: dict, inbound_text: str, policy: dict, context: dict | None = None) -> Verdict:
+    """proposed = {"action": str, "text": str}. AI reply agent output for an inbound message.
+
+    context = {"channel": "whatsapp"}: on a scope-locked channel, an off-scope request ("write my essay")
+    must get "decline" or "escalate", never an answer."""
     cfg = policy["automation"]
     v: list[str] = []
-    if proposed.get("action") not in cfg["reply_agent_allowed_actions"]:
-        v.append(f"action '{proposed.get('action')}' not in allowed list")
+    action = proposed.get("action")
+    if action not in cfg["reply_agent_allowed_actions"]:
+        v.append(f"action '{action}' not in allowed list")
+    channel = (context or {}).get("channel")
+    if channel in cfg.get("scope_locked_channels", []) and any(
+            re.search(p, inbound_text, re.I) for p in cfg.get("off_scope_patterns", [])):
+        if action not in ("decline", "escalate"):
+            v.append(f"off-scope request on {channel}: the bot answers only about the business, so it must decline")
+        return Verdict.from_violations("reply_guard", v)
+    if action == "decline":
+        return Verdict.from_violations("reply_guard", v)
     blob = f"{inbound_text}\n{proposed.get('text', '')}".lower()
     hits = [k for k in cfg["escalate_keywords"] if k in blob]
     auto_ok = any(re.search(p, inbound_text, re.I) for p in cfg.get("reply_auto_ok_patterns", []))
