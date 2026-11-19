@@ -19,7 +19,8 @@ from .evidence import agreement, required_cases, strata_shortfall
 
 GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
                "automation_guard", "manipulation_guard", "visibility_stats", "action_gate",
-               "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard"}
+               "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard",
+               "testimonial_guard", "likeness_guard", "dark_pattern_guard"}
 _BASE = [Path.cwd()]
 
 
@@ -120,6 +121,15 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
                 deploy.append((claimed <= have, f"calibration for '{j.get('template')}' matches its label file "
                                                 f"(claims {claimed}, file has {have} labelled)"))
                 kappa = agr["kappa"] if agr["second_labeller"] else None
+        if ev.get("require_repeat_runs"):
+            runs, split, net = cal.get("runs", 1), cal.get("run_disagreement"), cal.get("net")
+            deploy.append((runs >= ev["judge_runs"] and split is not None and split <= ev["max_run_disagreement"],
+                           f"judge '{j.get('template')}' stable across {ev['judge_runs']} runs "
+                           f"(≤ {ev['max_run_disagreement']:.0%} of rows disagreeing; has {runs} run(s)"
+                           + (f", {split:.0%}" if split is not None else "") + ")"))
+            deploy.append((net is not None and net >= ev["min_judge_net"],
+                           f"judge '{j.get('template')}' net score ≥ {ev['min_judge_net']:+.2f} (wrong answers count against it"
+                           + (f"; has {net:+.2f})" if net is not None else "; not measured)")))
         if ev.get("require_two_labellers"):
             deploy.append((kappa is not None and kappa >= ev["min_kappa"],
                            f"judge '{j.get('template')}' labels agreed by two labellers (κ ≥ {ev['min_kappa']:.2f}"

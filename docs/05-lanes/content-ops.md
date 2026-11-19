@@ -44,3 +44,14 @@ draft
 | A post goes live without a recorded sign-off | the gate needs `approval_log` for any `publish` action, and a preview (`preview_before_publish: true`) in place of a canary |
 
 `gtm-evals check draft.txt --category food --competitor "Brand X"` runs the regulated-claims pass from the command line. Patterns follow the ASCI code and FSSAI advertising rules as a starting point; they're not legal advice, so review them per category.
+
+
+## Added in 0.2.0
+
+| Failure | Guard |
+|---|---|
+| A post quotes a "customer" who never said it, rewords a real review, or shows "23 people are viewing this" | `testimonial_guard`: unregistered quotes and counters block, reworded quotes escalate |
+| An ad uses a real person's face or voice without consent, or an AI image with no label | `likeness_guard` |
+| A landing page or checkout pre-ticks an add-on, hides a fee until the last step, or shames people who decline | `dark_pattern_guard` |
+
+Keep the testimonial register next to the claims register: `id`, `quote` (exact), `author`, `source`, `date`, `consent`, and `ai_generated` / `insider` flags. The likeness register holds `id`, `name`, `consent`, `scope` (e.g. `ads`, `social`) and `expires`.

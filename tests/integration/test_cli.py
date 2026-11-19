@@ -266,9 +266,14 @@ class TestJudge:
 
         calls = stub_judge(flip={"L01", "L20"})
         code, out, _ = run_cli("judge", "calibrate", "personalisation_factuality", labels, "--update", wf)
-        assert code == 0 and "agreement 94% on 32" in out and len(calls) == 32
+        assert code == 0 and "agreement 94% on 32" in out and len(calls) == 96       # 3 runs per row
+        assert "net score +0.88" in out and "runs disagreed on 0% of rows" in out and "96 model calls" in out
         assert "disagree  L01: judge fail, human pass" in out and f"updated {wf}" in out
-        assert yaml.safe_load(wf.read_text())["judges"][0]["calibration"] == {"labelled_cases": 32, "agreement": 0.94, "kappa": 1.0}
+        assert yaml.safe_load(wf.read_text())["judges"][0]["calibration"] == {"labelled_cases": 32, "agreement": 0.94, "kappa": 1.0,
+                                                                         "net": 0.88, "runs": 3, "run_disagreement": 0.0}
+        calls.clear()   # a rerun reads the cache: no model calls
+        code, out, _ = run_cli("judge", "calibrate", "personalisation_factuality", labels)
+        assert code == 0 and len(calls) == 0
 
     def test_agreement(self, run_cli, write_labels):
         code, out, _ = run_cli("judge", "agreement", "swap_test", write_labels(15, 15, flip_b={"L01"}))
@@ -286,7 +291,16 @@ class TestJudge:
     def test_calibrate_uses_only_agreed_rows(self, run_cli, stub_judge, write_labels):
         calls = stub_judge()
         code, out, _ = run_cli("judge", "calibrate", "swap_test", write_labels(16, 16, flip_b={"L01", "L02"}))
-        assert len(calls) == 30 and "κ 0.88; 2 rows they disagree on were left out" in out
+        assert len(calls) == 90 and "κ 0.88; 2 rows they disagree on were left out" in out
+
+    def test_calibrate_runs_flags(self, run_cli, stub_judge, write_labels):
+        calls = stub_judge()
+        code, out, _ = run_cli("judge", "calibrate", "swap_test", write_labels(15, 15), "--runs", "1", "--no-cache")
+        assert code == 0 and len(calls) == 30 and "1 run(s) per row" in out
+        calls.clear()
+        code, out, _ = run_cli("judge", "calibrate", "swap_test", write_labels(15, 15), "--runs", "2", "--max-calls", "10",
+                               "--no-cache")
+        assert code == 1 and len(calls) == 10 and "stopped at --max-calls 10" in out
 
     def test_calibrate_below_bar_exits_1(self, run_cli, stub_judge, write_labels):
         stub_judge(flip={f"L{i:02d}" for i in range(1, 8)})

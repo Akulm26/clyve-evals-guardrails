@@ -2,7 +2,22 @@
 
 ## Unreleased (0.2.0)
 
-Phases 0 and 1 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+Phases 0, 1 and 2 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+
+### Phase 2 · Honest social proof + honest judges
+
+Guardrails
+- `testimonial_guard` (new): quoted testimonials must match a registered entry word for word, with consent and a source. Reworded quotes escalate; unregistered ones block. AI-written reviews, undisclosed insider reviews, live-looking counters ("23 people are viewing this") and unsourced star ratings are caught.
+- `likeness_guard` (new): a real face or voice needs a consent record that covers the use and hasn't expired. Synthetic image, video and audio need a visible AI label; synthetic audio discloses at the start. AI-written text needs no label (noted).
+- `dark_pattern_guard` (new): reads checkout and flow specs for the patterns in India's 2023 dark-pattern guidelines: basket sneaking, false urgency, confirm-shaming, drip pricing, disguised ads, nagging, trick questions, forced action, interface interference and subscription traps.
+- The `content_ops` lane, and Clyve's content-engine manifest, now require all three.
+
+Evals
+- Judges can abstain. `calibrate` scores right +1, abstain 0, wrong −1 and reports `net`; `agreement` is right ÷ answered.
+- Each row is judged 3 times by default (`--runs`). The verdict is the majority (a tie counts as abstain), and `run_disagreement` is the share of rows whose runs split.
+- Results are cached on disk by template, row, model and run (`--cache`, `--no-cache`), so a rerun costs nothing. `--max-calls` stops before the budget is spent.
+- The gate needs each judge stable across 3 runs (≤ 5% of rows disagreeing) and a net score ≥ +0.70. `--update` writes `net`, `runs` and `run_disagreement` into the manifest.
+- 18 golden cases (p2-01 to p2-18) across the three new guards; 84 in `evals/lanes.jsonl`.
 
 ### Phase 1 · India rules + proof size
 

@@ -14,8 +14,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dpdp_guard, enrichment_guard, injection_guard,
-               manipulation_guard, outreach_guard, pii_guard, promise_guard, visibility_stats)
+from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dark_pattern_guard, dpdp_guard,
+               enrichment_guard, injection_guard, likeness_guard, manipulation_guard, outreach_guard, pii_guard,
+               promise_guard, testimonial_guard, visibility_stats)
 from .core import Verdict
 
 
@@ -56,6 +57,12 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return dpdp_guard.check_campaign(x["campaign"], policy)
     if g == "dpdp_notice":
         return dpdp_guard.check_notice(x["text"], policy)
+    if g == "testimonial":
+        return testimonial_guard.check(x["text"], x.get("register", []), policy)
+    if g == "likeness":
+        return likeness_guard.check_asset(x["asset"], x.get("register", []), policy, x.get("today"), x.get("usage", "ads"))
+    if g == "dark_pattern":
+        return dark_pattern_guard.check_flow(x["spec"], policy)
     if g == "claim_safety":
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":

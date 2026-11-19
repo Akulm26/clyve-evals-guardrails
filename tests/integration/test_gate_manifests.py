@@ -34,7 +34,7 @@ def test_deployable_when_evidence_real(tmp_path, monkeypatch):
     labels.write_text("id,text,human_verdict,human_verdict_b\n"
                       + "\n".join(f"L{i},msg,{v},{v}" for i in range(30) for v in ['pass' if i % 2 else 'fail']))
     m["judges"][0]["labels"] = str(labels)
-    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9}
+    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}
     assert check(m, P)["verdict"] == "DEPLOYABLE"
 
 
@@ -43,7 +43,7 @@ def test_calibration_cannot_claim_more_labels_than_the_file_has(tmp_path):
     gs = tmp_path / "real.jsonl"
     gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()))
     m["golden_set"] = str(gs)
-    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9}   # label file in repo is still empty
+    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}   # label file in repo is still empty
     r = check(m, P, base_dir=ROOT)
     assert r["verdict"] == "PILOT ONLY"
     assert any("matches its label file" in t and not ok for ok, t in r["deployable"])

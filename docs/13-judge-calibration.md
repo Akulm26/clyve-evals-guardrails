@@ -78,6 +78,21 @@ Read every disagreement. Either the judge is wrong (tighten the template and re-
 
 `--update` writes `calibration: {labelled_cases: 34, agreement: 0.88}` into the manifest's judge entry, keeping its comments. In CI, the **calibrate** workflow does the same on every change to `evals/labels/` when the repo has an `ANTHROPIC_API_KEY` secret, and posts the result to the run summary.
 
+## 3b. Can't-tell beats a guess, and one run isn't enough
+
+A judge may answer `abstain` (or `unsure`, `insufficient_evidence`). Scoring: right +1, abstain 0, wrong −1. `net` = (right − wrong) ÷ rows, so a judge that guesses scores below one that admits it can't tell. The gate needs `net ≥ +0.70`.
+
+Each row is judged 3 times. The row's verdict is the majority; a tie counts as abstain. If the runs split on more than 5% of rows, the judge isn't stable enough to gate on.
+
+```
+gtm-evals judge calibrate personalisation_factuality labels.csv --update workflows/teardown-outreach.yaml
+agreement 94% on 32 labelled cases (gate: ≥85% on ≥30)
+net score +0.88 (right +1, can't-tell 0, wrong −1; gate ≥ +0.70); 0 abstained
+3 run(s) per row; runs disagreed on 0% of rows (gate ≤ 5%); 96 model calls
+```
+
+Results are cached in `.gtm-evals-cache/judges/` by template, row, model and run, so rerunning after you fix one label only pays for that row. `--no-cache` forces fresh calls; `--max-calls N` stops before spending more than N.
+
 ## 4. The gate checks your claim
 
 A manifest's judge entry can name its label file:

@@ -25,6 +25,28 @@ promise:
     - "\\b(cited|recommended|ranked|mentioned|featured)\\s+(in|within)\\s+(a|one|two|three|four|six|\\d+)\\s+(day|week|month)s?\\b"
     - "\\b(the\\s+)?top\\s+(answer|result|recommendation|pick)\\s+(on|in)\\b"
 
+testimonial:   # ASCI (no fabricated endorsements) + FTC 16 CFR 465 (fake reviews). Not legal advice.
+  require_consent: true
+  reworded_overlap: 0.6              # a quote this close to a registered one escalates: use the exact wording
+  insider_disclosure: "(our (team|founder|staff)|employee|family|paid|gifted|sponsored|#ad|partnership)"
+  testimonial_cues: "(review|testimonial|customer|says|said|loved by|★)"
+  social_proof_patterns:
+    - "\\b\\d[\\d,]*\\+?\\s+(people|others|shoppers|customers)\\s+(are\\s+)?(viewing|looking at|watching|buying)"
+    - "\\b\\d[\\d,]*\\s+(sold|bought|ordered)\\s+in\\s+the\\s+last\\s+\\d+\\s+(minutes?|hours?)"
+    - "\\bsomeone in [A-Z][a-z]+ just (bought|ordered|purchased)"
+  star_patterns: ["★{3,}", "⭐{3,}"]
+
+likeness:   # MeitY IT Amendment Rules 2026 (synthetic content) + ASCI AI-ad guidelines. Not legal advice.
+  label_required_types: [image, video, audio]
+  label_patterns: ["ai[- ]?generated", "created (with|using) ai", "made with ai", "synthetic", "digitally (created|altered)", "ai[- ]?assisted", "virtual (influencer|character)"]
+
+dark_patterns:   # India's Guidelines for Prevention and Regulation of Dark Patterns, 2023 (CCPA). Not legal advice.
+  confirm_shaming: ["no thanks,? i (don't|do not) (like|want)", "i('d| would) rather (pay|miss)", "i (don't|do not) care about", "i('ll| will) stay (broke|unhealthy)"]
+  late_fee_steps: [final_step, payment, checkout_final, after_payment]
+  max_prompt_repeats: 2
+  max_extra_cancel_steps: 1
+  negation_words: "\\b(don't|do not|not|no|never|un\\w+|opt[- ]out)\\b"
+
 dpdp:   # DPDP Act 2023 + DPDP Rules 2025 (notified 13 Nov 2025). Not legal advice; duties phase in by date.
   adult_age: 18
   child_categories: [kids, kid, children, baby, infant, toddler, teen, school, toy, kids nutrition]
@@ -200,10 +222,14 @@ evidence:   # how much proof a DEPLOYABLE verdict needs (gtm_evals.evidence)
   strata: {standard: 0.40, ambiguous: 0.35, adversarial: 0.25}
   require_two_labellers: true
   min_kappa: 0.80
+  judge_runs: 3                # each labelled row is judged this many times
+  require_repeat_runs: true
+  max_run_disagreement: 0.05   # rows whose runs don't all agree, at most
+  min_judge_net: 0.70          # (right − wrong) / rows; abstaining scores 0, guessing wrong −1
 
 deployment_gate:
   lanes:                     # guards every workflow in a lane must wire in
-    content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard]
+    content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard]
     ai_seo:               [ai_seo_guard, visibility_stats, promise_guard]
     gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]
     marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]

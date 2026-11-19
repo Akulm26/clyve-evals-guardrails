@@ -81,7 +81,8 @@ class TestCalibrate:
         assert res["labelled_cases"] == 3 and len(calls) == 3
 
     def test_no_labels(self, stub_judge):
-        assert judges.calibrate("t", self.rows(0, 0, blank=3)) == {"labelled_cases": 0, "agreement": 0.0, "results": []}
+        r = judges.calibrate("t", self.rows(0, 0, blank=3))
+        assert r["labelled_cases"] == 0 and r["agreement"] == 0.0 and r["results"] == [] and r["net"] == 0.0
 
     def test_today_defaults_to_send_date(self, stub_judge):
         calls = stub_judge()

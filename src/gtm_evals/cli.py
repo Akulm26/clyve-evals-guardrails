@@ -244,12 +244,21 @@ def cmd_judge(a):
         if judges.count_labelled(rows)["labelled"] and not os.environ.get("ANTHROPIC_API_KEY"):
             print(f"{NO} set ANTHROPIC_API_KEY to run the judge (labels are counted with: gtm-evals judge status)", file=sys.stderr)
             return 2
+        ev = load_policy()["evidence"]
+        runs = a.runs or ev["judge_runs"]
         try:
-            res = judges.calibrate(t, rows, a.model)
+            res = judges.calibrate(t, rows, a.model, runs=runs, cache_dir=None if a.no_cache else a.cache,
+                                   max_calls=a.max_calls)
         except RuntimeError as e:
             print(f"{NO} {e}", file=sys.stderr)
             return 2
         print(f"agreement {res['agreement']:.0%} on {res['labelled_cases']} labelled cases (gate: ≥85% on ≥30)")
+        print(f"net score {res['net']:+.2f} (right +1, can't-tell 0, wrong −1; gate ≥ {ev['min_judge_net']:+.2f}); "
+              f"{res['abstained']} abstained")
+        print(f"{res['runs']} run(s) per row; runs disagreed on {res['run_disagreement']:.0%} of rows "
+              f"(gate ≤ {ev['max_run_disagreement']:.0%}); {res['calls']} model calls")
+        if not res["complete"]:
+            print(f"{NO} stopped at --max-calls {a.max_calls}: not every labelled row was judged")
         if "kappa" in res:
             print(f"two labellers: κ {res['kappa']:.2f}; {len(res['disagree'])} rows they disagree on were left out")
         for rid, got, want in res["results"]:
@@ -257,9 +266,12 @@ def cmd_judge(a):
                 print(f"  disagree  {rid}: judge {got}, human {want}")
         if a.update:
             ok = judges.update_manifest(a.update, Path(a.template).stem, res["labelled_cases"], res["agreement"],
-                                        res.get("kappa"))
+                                        res.get("kappa"), extra={"net": round(res["net"], 2), "runs": res["runs"],
+                                                                 "run_disagreement": round(res["run_disagreement"], 2)})
             print(f"{'updated' if ok else 'no judge entry for this template in'} {a.update}")
-        return 0 if res["labelled_cases"] >= 30 and res["agreement"] >= 0.85 else 1
+        good = (res["complete"] and res["labelled_cases"] >= 30 and res["agreement"] >= 0.85
+                and res["net"] >= ev["min_judge_net"] and res["run_disagreement"] <= ev["max_run_disagreement"])
+        return 0 if good else 1
 
 
 def cmd_policy(a):
@@ -297,6 +309,10 @@ def main(argv=None):
     p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "agreement", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
     p.add_argument("--rows", type=int, default=30, help="labels: number of blank rows"); p.add_argument("--force", action="store_true")
     p.add_argument("--update", metavar="MANIFEST", help="calibrate: write the result into this workflow manifest")
+    p.add_argument("--runs", type=int, help="calibrate: judge each row this many times (default: policy evidence.judge_runs)")
+    p.add_argument("--cache", default=".gtm-evals-cache/judges", help="calibrate: where judge results are cached")
+    p.add_argument("--no-cache", action="store_true", help="calibrate: always call the model")
+    p.add_argument("--max-calls", type=int, help="calibrate: stop before making more model calls than this")
     p.add_argument("--var", dest="vars", action="append", help="key=value"); p.add_argument("--var-file", action="append", help="key=path (file contents become the value)"); p.add_argument("--model"); p.set_defaults(fn=cmd_judge)
     p = sub.add_parser("policy", help="print the effective policy"); p.add_argument("--show", action="store_true"); p.add_argument("--profiles", action="store_true"); common(p); p.set_defaults(fn=cmd_policy)
 

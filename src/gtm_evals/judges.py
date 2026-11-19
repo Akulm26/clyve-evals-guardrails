@@ -12,6 +12,7 @@ import re
 from importlib import resources
 
 PASS_WORDS = {"pass", "on", "accurate"}
+ABSTAIN_WORDS = {"abstain", "unsure", "uncertain", "cannot_judge", "insufficient", "insufficient_evidence", "unknown"}
 
 
 def templates() -> list[str]:
@@ -38,8 +39,10 @@ def missing_vars(template: str, values: dict) -> list[str]:
 
 def normalise(out: dict) -> str:
     """Map each template's own vocabulary to pass/fail so agreement can be computed."""
-    raw = out.get("verdict", out.get("accuracy", ""))
-    return "pass" if str(raw).lower() in PASS_WORDS else "fail"
+    raw = str(out.get("verdict", out.get("accuracy", ""))).lower()
+    if raw in ABSTAIN_WORDS:
+        return "abstain"      # an honest "can't tell": scored 0, below right (+1) and above wrong (−1)
+    return "pass" if raw in PASS_WORDS else "fail"
 
 
 def run(template: str, values: dict, model: str | None = None) -> dict:
@@ -60,27 +63,76 @@ def run(template: str, values: dict, model: str | None = None) -> dict:
     return out
 
 
-def calibrate(template: str, rows: list[dict], model: str | None = None) -> dict:
+def _cache_key(template: str, values: dict, model: str | None, run_i: int) -> str:
+    import hashlib
+    import json
+    blob = json.dumps({"t": template, "v": {k: values[k] for k in sorted(values)}, "m": model or "", "r": run_i},
+                      sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
+
+
+def _cached_run(template: str, values: dict, model: str | None, run_i: int, cache_dir) -> dict:
+    """judges.run, remembered on disk by (template, row, model, run number): a rerun costs nothing."""
+    import json
+    from pathlib import Path
+    if cache_dir is None:
+        return run(template, values, model)
+    p = Path(cache_dir) / f"{_cache_key(template, values, model, run_i)}.json"
+    if p.exists():
+        return json.loads(p.read_text(encoding="utf-8"))
+    out = run(template, values, model)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(out, ensure_ascii=False, default=str), encoding="utf-8")
+    return out
+
+
+def calibrate(template: str, rows: list[dict], model: str | None = None, runs: int = 1,
+              cache_dir=None, max_calls: int | None = None) -> dict:
     """rows: dicts with the template's variables + human_verdict (+ human_verdict_b from a second labeller).
-    With a second labeller, only rows both labellers agree on are used, and κ is reported. Returns
-    agreement with the humans (KPI Q3)."""
+
+    - Two labellers: only rows both agree on are used, and κ is reported.
+    - runs > 1: each row is judged `runs` times; the row's verdict is the majority, and
+      `run_disagreement` is the share of rows whose runs didn't all agree.
+    - Scoring: right +1, abstain 0, wrong −1. `agreement` = right / rows answered (KPI Q3),
+      `net` = (right − wrong) / rows, so a judge that guesses scores below one that says "can't tell".
+    - max_calls: stop cleanly when the next row would exceed it; `complete` says whether every row ran.
+    """
+    from collections import Counter
+
     from .evidence import agreement as two_labellers
     agr = two_labellers(rows)
     if agr["second_labeller"]:
         keep = set(agr["agreed"])
         rows = [r for r in rows if r.get("id") in keep]
-    agree = total = 0
+    right = wrong = abstained = split = calls = 0
     results = []
+    complete = True
     for r in rows:
         if r.get("human_verdict") is None:
             continue  # unlabelled (e.g. blank rows of a labelling sheet): don't spend a model call
+        if max_calls is not None and calls + runs > max_calls:
+            complete = False
+            break
         if not r.get("today") and r.get("date_sent"):
             r = dict(r, today=r["date_sent"])  # a label sheet's "today" is the day the message went out
-        out = run(template, r, model)
-        total += 1
-        agree += int(out["_verdict"] == r["human_verdict"])
-        results.append((r.get("id"), out["_verdict"], r.get("human_verdict")))
-    out = {"labelled_cases": total, "agreement": agree / total if total else 0.0, "results": results}
+        verdicts = [_cached_run(template, r, model, i, cache_dir)["_verdict"] for i in range(runs)]
+        calls += runs
+        top = Counter(verdicts).most_common()
+        verdict = top[0][0] if len(top) == 1 or top[0][1] > top[1][1] else "abstain"   # a tie can't be trusted
+        split += int(len(set(verdicts)) > 1)
+        if verdict == "abstain":
+            abstained += 1
+        elif verdict == r["human_verdict"]:
+            right += 1
+        else:
+            wrong += 1
+        results.append((r.get("id"), verdict, r.get("human_verdict")))
+    total = right + wrong + abstained
+    answered = right + wrong
+    out = {"labelled_cases": total, "agreement": right / answered if answered else 0.0,
+           "net": (right - wrong) / total if total else 0.0, "abstained": abstained,
+           "runs": runs, "run_disagreement": split / total if total else 0.0,
+           "calls": calls, "complete": complete, "results": results}
     if agr["second_labeller"]:
         out.update(kappa=agr["kappa"], disagree=agr["disagree"])
     return out
@@ -120,7 +172,8 @@ def count_labelled(rows: list[dict]) -> dict:
     return {"labelled": sum(v in ("pass", "fail") for v in hv), "pass": hv.count("pass"), "fail": hv.count("fail")}
 
 
-def update_manifest(path, template_name: str, labelled_cases: int, agreement: float, kappa: float | None = None) -> bool:
+def update_manifest(path, template_name: str, labelled_cases: int, agreement: float, kappa: float | None = None,
+                    extra: dict | None = None) -> bool:
     """Write a calibration result into a workflow manifest in place, keeping its comments.
     Returns False if the manifest has no judge entry for this template."""
     import re
@@ -133,6 +186,8 @@ def update_manifest(path, template_name: str, labelled_cases: int, agreement: fl
                 m = re.match(r"(\s*)calibration:\s*{[^}]*}(.*)", lines[k].rstrip("\n"))
                 if m:
                     kap = f", kappa: {kappa:.2f}" if kappa is not None else ""
+                    for key, val in (extra or {}).items():
+                        kap += f", {key}: {val:.2f}" if isinstance(val, float) else f", {key}: {val}"
                     lines[k] = (f"{m.group(1)}calibration: {{labelled_cases: {labelled_cases}, "
                                 f"agreement: {agreement:.2f}{kap}}}     # gtm-evals judge calibrate\n")
                     p.write_text("".join(lines), encoding="utf-8")

@@ -92,9 +92,7 @@ Does an LLM write or send anything a customer, prospect or the public will see?
 |---|---|---|
 | states a number nobody can prove | "Trusted by 50,000 kitchens" | `claims_gate` |
 | promises what nobody controls | "You'll rank #1 on ChatGPT in 30 days" | `promise_guard` |
-| invents personalisation | "Loved your Shark Tank episode!" (there wasn't one) | `dpdp_guard` | India's DPDP Act + Rules: no behavioural targeting where minors may be in the audience, parental-consent records, consent-notice checker, consent record per contact (opt-in) |
-| `evidence` | `required_cases()` (Cochran, from the claimed rate and margin), `strata_shortfall()`, `cohen_kappa()`, `agreement()` for two labellers |
-| `outreach_guard` |
+| invents personalisation | "Loved your Shark Tank episode!" (there wasn't one) | `outreach_guard` |
 | pressures people | "Only 2 slots left, last chance" | `manipulation_guard` |
 | follows instructions hidden in a review or reply | "Ignore previous instructions and…" | `injection_guard` |
 | sends personal data to a model | phone numbers, emails, PAN, Aadhaar | `pii_guard` |
@@ -108,6 +106,10 @@ Does an LLM write or send anything a customer, prospect or the public will see?
 | calls the brand three different things | "Example Masala" on the site, "Example Foods Pvt Ltd" on LinkedIn | `ai_seo_guard.entity_consistency` |
 | makes a health claim a food can't make | "our haldi masala cures colds", "clinically proven" with no proof | `claim_safety_guard` |
 | writes unsourced or forbidden data to the CRM | a funding stage with no source, a personal Gmail, `founder_religion` | `enrichment_guard` |
+| targets an audience that may include children, or skips the consent notice | interest targeting on a kids' snacks campaign; "By signing up you agree to receive offers." | `dpdp_guard` |
+| invents a testimonial or a live counter | "This masala changed my cooking forever." — Priya (no such review); "23 people are viewing this" | `testimonial_guard` |
+| uses a real face or voice without consent, or an AI image without a label | a cricketer's likeness in an ad; a synthetic product shot with no "AI-generated" label | `likeness_guard` |
+| builds a checkout that tricks people | a pre-ticked ₹49 gift wrap; "No thanks, I don't like saving money"; a fee that appears at the last step | `dark_pattern_guard` |
 
 ## Concrete examples
 
@@ -360,7 +362,7 @@ Each manifest names its **lane**, and every lane has guards it must wire in, or 
 |---|---|---|
 | `marketing_automation` | automation_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard | bot replies disclose they're automated and reach a human |
 | `gtm_engineering` | outreach_guard · promise_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard | CRM writes go through enrichment_guard |
-| `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard | every publish has a recorded approval and a preview |
+| `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard · testimonial_guard · likeness_guard · dark_pattern_guard | every publish has a recorded approval and a preview |
 | `ai_seo` (was `ai_visibility`) | ai_seo_guard · visibility_stats · promise_guard | reports can't promise citations or rankings |
 
 Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
@@ -443,9 +445,14 @@ Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `
 | `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt; answer crawlers must be allowed, user-triggered fetchers and Google-Extended are noted, training crawlers reported), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()` |
 | `claim_safety_guard` | regulated categories (food, supplements, health, personal care): prohibited claims block (including "100%" for food, per FSSAI), claims that need proof escalate; superlatives and named competitors need proof in any category |
 | `enrichment_guard` | CRM writes: every field sourced, dated, fresh and confident; forbidden fields and protected attributes never stored; personal contact details need consent; no PII in free text |
+| `dpdp_guard` | India's DPDP Act + Rules: no behavioural targeting where minors may be in the audience, parental-consent records, consent-notice checker, consent record per contact (opt-in) |
+| `testimonial_guard` | every quoted testimonial matches a registered, consented, sourced entry word for word (reworded quotes escalate); no AI-written or undisclosed insider reviews; social-proof counters and star ratings need a live source (ASCI; FTC 16 CFR 465) |
+| `likeness_guard` | real faces and voices need a consent record that covers the use and hasn't expired; synthetic image, video and audio need a visible AI label (audio: at the start); synthetic people can't pose as customers (MeitY 2026 rules; ASCI AI-ad guidelines) |
+| `dark_pattern_guard` | checkout and flow specs against India's 2023 dark-pattern guidelines: pre-selected add-ons, fake countdowns, confirm-shaming, drip pricing, disguised ads, nagging, trick questions, forced actions, subscription traps |
+| `evidence` | `required_cases()` (Cochran, from the claimed rate and margin), `strata_shortfall()`, `cohen_kappa()`, `agreement()` for two labellers |
 | `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget |
 | `gate` | the deployment gate above |
-| `judges` | 6 LLM-judge templates: swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check |
+| `judges` | 6 LLM-judge templates: swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check. `calibrate()` scores right +1, "can't tell" 0, wrong −1, runs each row 3 times and caches results by template, row and model |
 
 ## Configure
 
