@@ -2,7 +2,7 @@
 
 ## 0.2.0 — 19 Nov 2026
 
-All six phases (0–5) of the adoption plan. Guardrails and evals shipped together, with each phase pairing work on both. Guardrails and evals ship together, one item on each track per phase.
+All six phases (0–5) of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
 
 ### Phase 5 · AI SEO and claims + operations
 
