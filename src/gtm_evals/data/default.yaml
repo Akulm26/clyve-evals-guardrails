@@ -28,6 +28,10 @@ promise:
 claim_safety:   # regulated categories (ContentOS quality gate). Not legal advice: review against current ASCI / FSSAI rules.
   regulated_categories: [food, beverage, spice, masala, snack, supplement, nutraceutical, health, wellness, ayurved, pharma,
                          personal care, skincare, skin care, cosmetic, haircare, hair care, baby, infant, kids nutrition]
+  food_categories: [food, beverage, spice, masala, snack, supplement, nutraceutical, kids nutrition, tea, coffee, ghee, honey]
+  prohibited_for_food:   # FSSAI advisory, 30 May 2025: no "100%" on labels or in promotional content
+    - "\\b100\\s?%"
+    - "\\b100\\s?per\\s?cent\\b"
   prohibited:     # can't be claimed for these products
     - "\\b(cures?|cured|curing|heals?|healing)\\b"
     - "\\b(treats?|prevents?|reverses?)\\s+(\\w+\\s+){0,2}(diabetes|cancer|covid|disease|illness|infection|blood pressure|bp|cholesterol|thyroid|pcos|arthritis)"
@@ -62,6 +66,9 @@ outreach:
   # results words a personal claim may only use if the signal itself says them
   outcome_words: ["doubl", "tripl", "sales", "revenue", "roas", "growth", "growing", "selling out", "sold out", "viral", "%"]
   require_unsubscribe_for: ["email"]
+  # Gmail/Yahoo bulk-sender rules: one-click unsubscribe headers (RFC 8058) on marketing email.
+  # "bulk" = when context["bulk_sender"] is true (Gmail: 5,000+ a day to Gmail, permanent once reached); "always"; "never".
+  one_click_unsubscribe: bulk
   unsubscribe_patterns: ["unsubscribe", "opt out", "opt-out", "reply stop", "reply \"stop\""]
   optin_required_for: ["whatsapp", "sms"]
   private_metric_patterns:          # blocked before intake (stage < audit)
@@ -73,14 +80,18 @@ outreach:
   # per sender account per day; conservative defaults, well under platform limits — set yours
   daily_cap_per_channel: {inmail: 20, linkedin_connect: 20, linkedin_dm: 30, instagram_dm: 20, whatsapp: 50, sms: 50}
   stop_bounce_rate: 0.02
-  stop_spam_complaint_rate: 0.001
+  warn_spam_complaint_rate: 0.001     # Gmail: keep under 0.1%
+  stop_spam_complaint_rate: 0.003     # Gmail: never reach 0.3%
+  dmarc_allowed_policies: [none, quarantine, reject]   # p=none is enough for Gmail/Outlook bulk rules; alignment is what matters
   sender_auth_required: ["spf", "dkim", "dmarc"]
   excluded_categories: []         # your ICP exclusions, e.g. ["trading", "real estate"]
 
 automation:
   dedupe_window_hours: 24
   max_per_contact_per_7d: {email: 3, whatsapp: 2, sms: 1}
-  quiet_hours_ist: {start: "21:00", end: "10:00"}   # promotional sends blocked; verify vs current TRAI rules
+  # Promotional sends blocked in this window; transactional/service messages are exempt.
+  # 10:00 is a deliberately cautious end: some sources give 09:00 — set yours after checking TRAI's current text.
+  quiet_hours_ist: {start: "21:00", end: "10:00"}
   promotional_types: ["promo", "winback", "abandoned_cart", "launch"]
   max_audience_growth_factor: 3.0
   reply_agent_allowed_actions: ["answer_faq", "share_link", "book_call", "escalate"]
@@ -123,9 +134,15 @@ action_gate:
 
 ai_seo:   # technical AI SEO (ContentOS E1/E2). Crawler names change: check each vendor's crawler docs.
   # Must be allowed, or the brand can't appear in that assistant's search answers / live fetches.
-  answer_crawlers: [OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Googlebot, Bingbot]
+  # Search/answer crawlers: must be allowed, or the brand drops out of that engine's answers.
+  answer_crawlers: [OAI-SearchBot, Claude-SearchBot, PerplexityBot, Googlebot, Bingbot]
+  # Fetch only when a user asks; vendors say robots.txt may not apply to them. Blocking them in robots.txt is
+  # reported, not failed: whether they get through is decided by the firewall/CDN, so test that instead.
+  user_triggered_fetchers: [ChatGPT-User, Claude-User, Perplexity-User, Google-Agent]
   # Model training. The client's choice: reported by `training_access()`, never failed.
   training_crawlers: [GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent]
+  # Training tokens that also affect visibility: blocking Google-Extended can cut Gemini grounding (not Google Search).
+  visibility_relevant_training: [Google-Extended]
   min_words_without_js: 120        # visible words a no-JavaScript crawler must find on a key page
   require_canonical: true
   required_schema_types: [Organization]

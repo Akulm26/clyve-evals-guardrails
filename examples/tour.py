@@ -16,6 +16,8 @@ def show(label, v):
     print(f"{label:<44} {tag}")
     for x in v.violations:
         print(f"   - {x}")
+    for x in v.notes:
+        print(f"   ℹ️  {x}")
 
 
 def section(title):
@@ -52,7 +54,7 @@ lead = {"email": "founder@examplemasala.example", "category": "d2c food", "stage
             {"fact": "not mentioned by ChatGPT for best masala brands in Punjab",
              "source_url": "shots/chatgpt-01.png", "date": "2026-11-10"}]}
 ctx = {"today": "2026-11-18", "suppression": [], "sent_today_by_inbox": {"outreach@yourco.example": 4},
-       "sender_auth": {"spf": True, "dkim": True, "dmarc": True}}
+       "sender_auth": {"spf": True, "dkim": True, "dmarc": True, "spf_aligned": True}}
 show("sourced email, opt-out line", outreach_guard.check(msg, lead, ctx, P))
 invented = dict(msg, body=body.replace("Worth a", "Loved your Shark Tank episode too! Worth a"))
 show("AI adds a 'nice touch'", outreach_guard.check(invented, lead, ctx, P))

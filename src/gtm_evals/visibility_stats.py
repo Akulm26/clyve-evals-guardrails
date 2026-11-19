@@ -29,6 +29,10 @@ def validate_rows(rows: list[dict], policy: dict) -> list[str]:
     surfaces = {r.get("surface") for r in rows}
     if len(surfaces) > 1:
         problems.append(f"mixed surfaces {sorted(map(str, surfaces))} — keep app and API in separate reports")
+    banned = {k for r in rows for k in r if k.lower() in ("rank", "position", "rank_position", "list_position")}
+    if banned:
+        problems.append(f"rank/position fields {sorted(banned)}: AI answer lists rarely repeat run to run, so report "
+                        f"presence rate only")
     for i, r in enumerate(rows):
         if r.get("query_type") not in qt:
             problems.append(f"row {i}: missing/unknown query_type — blended numbers not allowed")

@@ -27,6 +27,11 @@ def check(text: str, category: str | None, policy: dict, competitors: list[str] 
     cfg = policy["claim_safety"]
     v: list[str] = []
     needs_proof: list[str] = []
+    cat = re.sub(r"[-_/]+", " ", (category or "").lower())
+    if any(c in cat for c in cfg.get("food_categories", [])):
+        for pat in cfg.get("prohibited_for_food", []):
+            for m in re.finditer(pat, text, flags=re.IGNORECASE):
+                v.append(f"prohibited for food (FSSAI): '{m.group(0)}' — remove it")
     if _regulated(category, cfg):
         for pat in cfg["prohibited"]:
             for m in re.finditer(pat, text, flags=re.IGNORECASE):
@@ -40,6 +45,8 @@ def check(text: str, category: str | None, policy: dict, competitors: list[str] 
     for name in competitors or []:
         if re.search(rf"\b{re.escape(name)}\b", text, flags=re.IGNORECASE):
             needs_proof.append(f"names competitor {name}")
+    blocked = " ".join(v).lower()
+    needs_proof = [x for x in needs_proof if not (x.lower().startswith("100") and "fssai" in blocked)]
     seen = []
     for x in needs_proof:
         if x.lower() not in (s.lower() for s in seen):

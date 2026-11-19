@@ -80,7 +80,8 @@ def test_action_gate_tiers(monkeypatch):
 
 def test_deliverability_stops():
     assert not deliverability({"sent": 1000, "bounced": 25, "spam_complaints": 0}, P)
-    assert not deliverability({"sent": 1000, "bounced": 0, "spam_complaints": 1}, P)
+    assert not deliverability({"sent": 1000, "bounced": 0, "spam_complaints": 3}, P)
+    assert deliverability({"sent": 1000, "bounced": 0, "spam_complaints": 1}, P).notes   # 0.1%: warns, still sends
     assert deliverability({"sent": 1000, "bounced": 5, "spam_complaints": 0}, P)
 
 

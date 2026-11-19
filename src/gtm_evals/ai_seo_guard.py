@@ -9,9 +9,11 @@ takes text you already fetched (this module never touches the network):
     entity_consistency(profiles, canonical, policy)     one name and one description everywhere?
     check_page(...)                                     all of the above for one page, combined
 
-Search/answer crawlers (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, …)
-must be allowed: blocking them removes the brand from AI answers. Training crawlers (GPTBot,
-ClaudeBot, Google-Extended, …) are the client's choice: reported, never failed.
+Search/answer crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Googlebot, Bingbot) must be
+allowed: blocking them removes the brand from AI answers. User-triggered fetchers (ChatGPT-User,
+Claude-User, Perplexity-User, Google-Agent) may ignore robots.txt, so blocking them is a note: test the
+firewall. Training crawlers (GPTBot, ClaudeBot, …) are the client's choice: reported, never failed —
+except that Google-Extended also controls Gemini grounding, which is noted.
 Crawler names change; the lists live in the policy (ai_seo.*) so they can be updated without code.
 """
 from __future__ import annotations
@@ -79,11 +81,16 @@ def is_allowed(groups: list[dict], agent: str, path: str = "/") -> bool:
 def crawler_access(robots_txt: str | None, policy: dict, path: str = "/") -> Verdict:
     cfg = policy["ai_seo"]
     if robots_txt is None:
-        return Verdict.from_violations("ai_seo_guard", [])   # no robots.txt = everything allowed
+        return Verdict.from_violations("ai_seo_guard", [])   # no robots.txt = everything allowed (a firewall can still block)
     groups = parse_robots(robots_txt)
     v = [f"{bot} is blocked from {path} — the brand drops out of the answers it powers"
          for bot in cfg["answer_crawlers"] if not is_allowed(groups, bot, path)]
-    return Verdict.from_violations("ai_seo_guard", v)
+    notes = [f"{bot} is blocked in robots.txt, but it fetches on a user's request and may ignore robots.txt: "
+             f"test access through the firewall/CDN instead"
+             for bot in cfg.get("user_triggered_fetchers", []) if not is_allowed(groups, bot, path)]
+    notes += [f"{bot} is blocked: it is a training token but also affects visibility (Google-Extended: Gemini grounding)"
+              for bot in cfg.get("visibility_relevant_training", []) if not is_allowed(groups, bot, path)]
+    return Verdict.from_violations("ai_seo_guard", v, notes=notes)
 
 
 def training_access(robots_txt: str | None, policy: dict, path: str = "/") -> dict[str, bool]:
@@ -274,4 +281,4 @@ def check_page(html: str, policy: dict, robots_txt: str | None = None, path: str
     if robots_txt is not None:
         parts.insert(0, crawler_access(robots_txt, policy, path))
     v = [x for p in parts for x in p.violations]
-    return Verdict.from_violations("ai_seo_guard", v)
+    return Verdict.from_violations("ai_seo_guard", v, notes=[x for p in parts for x in p.notes])

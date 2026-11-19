@@ -12,16 +12,22 @@ class Verdict:
     passed: bool
     violations: list[str] = field(default_factory=list)
     escalate: bool = False
+    notes: list[str] = field(default_factory=list)   # informational: never changes `passed`
 
     @classmethod
-    def from_violations(cls, guard: str, violations: list[str], escalate: bool = False) -> "Verdict":
-        return cls(guard=guard, passed=not violations and not escalate, violations=violations, escalate=escalate)
+    def from_violations(cls, guard: str, violations: list[str], escalate: bool = False,
+                        notes: list[str] | None = None) -> "Verdict":
+        return cls(guard=guard, passed=not violations and not escalate, violations=violations, escalate=escalate,
+                   notes=list(notes or []))
 
     def __bool__(self) -> bool:  # `if verdict:` reads as "did it pass"
         return self.passed
 
     def to_dict(self) -> dict:
-        return {"guard": self.guard, "passed": self.passed, "violations": self.violations, "escalate": self.escalate}
+        d = {"guard": self.guard, "passed": self.passed, "violations": self.violations, "escalate": self.escalate}
+        if self.notes:
+            d["notes"] = self.notes
+        return d
 
 
 def _data(*parts: str) -> str:
@@ -68,4 +74,5 @@ def combine(*verdicts: Verdict) -> Verdict:
         passed=all(v.passed for v in verdicts),
         violations=violations,
         escalate=any(v.escalate for v in verdicts),
+        notes=[f"[{v.guard}] {x}" for v in verdicts for x in v.notes],
     )

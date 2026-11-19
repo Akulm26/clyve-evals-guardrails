@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased (0.2.0)
+
+Phase 0 of the adoption plan: fixes to checks that were wrong or out of date.
+
+- **Guardrails**
+  - `outreach_guard`: bulk senders (`context["bulk_sender"]`) need RFC 8058 one-click unsubscribe headers (`List-Unsubscribe` with an https URL + `List-Unsubscribe-Post: List-Unsubscribe=One-Click`), per Gmail's bulk-sender rules; `one_click_unsubscribe: bulk | always | never`.
+  - DMARC must align with SPF or DKIM (`sender_auth.spf_aligned` / `dkim_aligned`); `p=none` is enough. Unknown alignment is a note.
+  - `deliverability()`: complaints warn at 0.1% (a note) and stop at 0.3% (was a stop at 0.1%).
+  - `claim_safety_guard`: "100%" / "100 per cent" blocked for food categories (FSSAI advisory, 30 May 2025).
+  - Quiet hours stay 21:00–10:00 IST by default, documented as a cautious choice; transactional sends remain exempt.
+- **Evals and reporting**
+  - `Verdict.notes`: informational lines that never change `passed`; printed by the CLI and kept by `combine()`.
+  - `ai_seo_guard`: answer crawlers are OAI-SearchBot, Claude-SearchBot, PerplexityBot, Googlebot, Bingbot. User-triggered fetchers (ChatGPT-User, Claude-User, Perplexity-User, Google-Agent) blocked in robots.txt are a note, since they may ignore it. Blocking Google-Extended is noted as affecting Gemini grounding.
+  - `visibility_stats.validate_rows` rejects rank/position fields: AI answer lists rarely repeat, so only presence rate is reported.
+  - Golden types `deliverability` and `visibility_rows`; 14 new cases in `evals/lanes.jsonl`, every row tagged with a `stratum`.
+
 ## 0.1.1 — 18 Nov 2026
 - **AI SEO lane** (`ai_seo`, was `ai_visibility`, old name still accepted): new `ai_seo_guard` with `crawler_access` (RFC 9309 robots.txt; answer crawlers must be allowed, training crawlers reported only), `raw_html` (readable without JavaScript, noindex, canonical, title), `schema` (JSON-LD types and required fields) and `entity_consistency`; `gtm-evals seo` command. The lane now requires `ai_seo_guard`, `visibility_stats` and `promise_guard`.
 - **ContentOps:** new `claim_safety_guard` for regulated categories (food, supplements, health, personal care); `gtm-evals check --category`. The lane now also requires `claim_safety_guard`, `pii_guard` and `injection_guard`; any `publish` needs an `approval_log`, and a preview counts as its canary.

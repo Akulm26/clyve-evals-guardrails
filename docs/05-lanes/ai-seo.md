@@ -11,8 +11,10 @@ AI SEO has two halves, and both need guards:
 
 | Failure | Guard | Notes |
 |---|---|---|
-| robots.txt blocks a search or answer crawler (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Googlebot, Bingbot) | `ai_seo_guard.crawler_access(robots_txt, policy, path)` | RFC 9309 matching: the group that names the crawler wins over `*`, the longest rule wins, and Allow wins a tie. Checked per path, so `/products/` can fail while `/` passes |
-| Training crawlers blocked (GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent) | `ai_seo_guard.training_access()`, **report only** | The client's choice. Blocking training doesn't remove the brand from answers |
+| robots.txt blocks a search or answer crawler (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Googlebot, Bingbot) | `ai_seo_guard.crawler_access(robots_txt, policy, path)` | RFC 9309 matching: the group that names the crawler wins over `*`, the longest rule wins, and Allow wins a tie. Checked per path, so `/products/` can fail while `/` passes |
+| User-triggered fetchers blocked (ChatGPT-User, Claude-User, Perplexity-User, Google-Agent) | `crawler_access` **note** | They fetch on a user's request and vendors say robots.txt may not apply: the firewall or CDN decides, so test that |
+| Training crawlers blocked (GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent) | `ai_seo_guard.training_access()`, **report only** | The client's choice. Exception: Google-Extended also controls Gemini grounding, so blocking it is noted |
+| Rank or position in AI answers | `visibility_stats.validate_rows` **rejects** | Lists rarely repeat run to run; report presence rate only |
 | Key facts only appear after JavaScript runs | `ai_seo_guard.raw_html(html, policy, must_contain=[...])` | Pass the HTML as served, not as rendered. Fails JS shells (under `min_words_without_js` visible words) and any `must_contain` phrase missing from the raw HTML |
 | Page kept out of search | `raw_html` | `meta robots` noindex / nosnippet / none |
 | Duplicate or ambiguous URL | `raw_html` | needs an absolute canonical link and a `<title>` |

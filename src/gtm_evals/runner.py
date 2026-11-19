@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 
 from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, enrichment_guard, injection_guard,
-               manipulation_guard, outreach_guard, pii_guard, promise_guard)
+               manipulation_guard, outreach_guard, pii_guard, promise_guard, visibility_stats)
 from .core import Verdict
 
 
@@ -47,6 +47,11 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return automation_guard.check_send(x["event"], x.get("history", []), policy)
     if g == "automation_reply":
         return automation_guard.check_reply(x["proposed"], x["inbound"], policy)
+    if g == "deliverability":
+        return outreach_guard.deliverability(x["stats"], policy)
+    if g == "visibility_rows":
+        problems = visibility_stats.validate_rows(x["rows"], policy)
+        return Verdict.from_violations("visibility_stats", problems)
     if g == "claim_safety":
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":

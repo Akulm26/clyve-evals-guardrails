@@ -110,6 +110,8 @@ def cmd_check(a):
         print(f"{OK} passes all text guards" if v else f"{NO} {len(v.violations)} issue(s)" + (" · escalate to a human" if v.escalate else ""))
         for x in v.violations:
             print(f"   {x}")
+        for x in v.notes:
+            print(f"   ℹ️  {x}")
         if reg is None:
             print("   (no --register given, so numbers were not checked against a claims register)")
     return 0 if v else 1
@@ -150,6 +152,8 @@ def cmd_seo(a):
             print(f"  {OK if v else NO} {title}")
             for x in v.violations:
                 print(f"     - {x}")
+            for x in v.notes:
+                print(f"     ℹ️  {x}")
     return 0 if ok else 1
 
 

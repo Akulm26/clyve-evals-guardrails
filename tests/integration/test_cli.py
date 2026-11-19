@@ -81,6 +81,11 @@ class TestCheckCategory:
         code, out, _ = run_cli("check", d, "--category", "food")
         assert code == 1 and "[claim_safety_guard] prohibited for 'food': 'cures'" in out and "escalate" in out
 
+    def test_food_100_percent(self, run_cli, tmp_path):
+        d = tmp_path / "d.txt"; d.write_text("100% pure haldi.", encoding="utf-8")
+        code, out, _ = run_cli("check", d, "--category", "spice")
+        assert code == 1 and "prohibited for food (FSSAI): '100%'" in out
+
     def test_competitor_flag(self, run_cli, tmp_path):
         d = tmp_path / "d.txt"; d.write_text("Fresher than Everest.", encoding="utf-8")
         code, out, _ = run_cli("check", d, "--competitor", "Everest")
@@ -114,6 +119,11 @@ class TestSeo:
         _, robots = self.files(tmp_path, robots="User-agent: GPTBot\nDisallow: /\n")
         code, out, _ = run_cli("seo", "--robots", robots)
         assert code == 0 and "blocked: GPTBot" in out
+
+    def test_user_triggered_block_prints_a_note_and_passes(self, run_cli, tmp_path):
+        _, robots = self.files(tmp_path, robots="User-agent: ChatGPT-User\nDisallow: /\n")
+        code, out, _ = run_cli("seo", "--robots", robots)
+        assert code == 0 and "ℹ️  ChatGPT-User is blocked in robots.txt" in out
 
     def test_entity_file(self, run_cli, tmp_path):
         e = tmp_path / "e.json"

@@ -254,13 +254,15 @@ ai_seo_guard.entity_consistency(profiles, canonical, policy)
 ```text
 robots.txt (product pages)                   FAIL
    - OAI-SearchBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
-   - ChatGPT-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
    - Claude-SearchBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
-   - Claude-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
    - PerplexityBot is blocked from /products/chai-masala — the brand drops out of the answers it powers
-   - Perplexity-User is blocked from /products/chai-masala — the brand drops out of the answers it powers
    - Googlebot is blocked from /products/chai-masala — the brand drops out of the answers it powers
    - Bingbot is blocked from /products/chai-masala — the brand drops out of the answers it powers
+   ℹ️  ChatGPT-User is blocked in robots.txt, but it fetches on a user's request and may ignore robots.txt: test access through the firewall/CDN instead
+   ℹ️  Claude-User is blocked in robots.txt, but it fetches on a user's request and may ignore robots.txt: test access through the firewall/CDN instead
+   ℹ️  Perplexity-User is blocked in robots.txt, but it fetches on a user's request and may ignore robots.txt: test access through the firewall/CDN instead
+   ℹ️  Google-Agent is blocked in robots.txt, but it fetches on a user's request and may ignore robots.txt: test access through the firewall/CDN instead
+   ℹ️  Google-Extended is blocked: it is a training token but also affects visibility (Google-Extended: Gemini grounding)
 training crawlers allowed: {'GPTBot': False, 'ClaudeBot': True}
 product page as served                       FAIL
    - only 0 words readable without JavaScript, need ≥ 120 (looks like a JavaScript-only page)
@@ -273,7 +275,7 @@ brand across channels                        FAIL
    - google_business: description doesn't match the canonical one-liner (0% overlap, need ≥ 60%)
 ```
 
-**Why it matters:** these are the parts of AI SEO you *can* promise (ContentOS E1 and E2). Search and answer crawlers must be allowed; training crawlers like GPTBot are the client's choice, so they're reported and never fail the check. Crawler names live in the policy (`ai_seo.answer_crawlers`) because vendors add new ones. From the command line: `gtm-evals seo page.html --robots robots.txt --must "winter chai masala"`.
+**Why it matters:** these are the parts of AI SEO you *can* promise (ContentOS E1 and E2). Search and answer crawlers must be allowed. User-triggered fetchers (ChatGPT-User, Claude-User, Perplexity-User) may ignore robots.txt, so blocking them is a note: what decides access is the firewall or CDN. Training crawlers like GPTBot are the client's choice, except that Google-Extended also controls Gemini grounding, which is noted. Crawler names live in the policy (`ai_seo.answer_crawlers`) because vendors add new ones. From the command line: `gtm-evals seo page.html --robots robots.txt --must "winter chai masala"`.
 
 ### 8. ContentOps: a food brand's post makes claims it can't make
 
@@ -430,13 +432,13 @@ Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `
 | `claims_gate` | every number traces to a proven claim; every ₹/Rs/INR figure is stamped; assumed figures are ranges |
 | `promise_guard` | outcome, ranking and timeline promises (negations like "we can't guarantee" pass) |
 | `manipulation_guard` | false urgency/scarcity, fear, guilt → escalate to a human |
-| `outreach_guard` | lawful basis, suppression, channel opt-in, unsubscribe, sender auth, ICP exclusions, sourced + fresh personalisation, undeclared facts, private metrics before intake, daily caps per inbox and per channel (InMail, LinkedIn, Instagram DMs, WhatsApp); `deliverability()` stop rules |
+| `outreach_guard` | lawful basis, suppression, channel opt-in, unsubscribe, sender auth, ICP exclusions, sourced + fresh personalisation, undeclared facts, private metrics before intake, daily caps per inbox and per channel (InMail, LinkedIn, Instagram DMs, WhatsApp); bulk senders need RFC 8058 one-click unsubscribe headers; DMARC must align with SPF or DKIM; `deliverability()` warns at 0.1% complaints and stops at 0.3% |
 | `automation_guard` | tenant isolation, consent at send, idempotency, frequency caps, quiet hours, mixed-content = promotional, audience-size sanity; replies are allowlisted |
 | `injection_guard` | flags instruction-like text; `wrap()` marks scraped/inbound text as untrusted data |
 | `pii_guard` | email, Indian mobile, PAN, Aadhaar; `redact()` / `restore()` around model calls |
 | `visibility_stats` | frozen prompt-set hash, no blended numbers, app vs API separation, `real_change()` (noise + chance band), `smallest_provable_move()` |
-| `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt, answer vs training crawlers), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()` |
-| `claim_safety_guard` | regulated categories (food, supplements, health, personal care): prohibited claims block, claims that need proof escalate; superlatives and named competitors need proof in any category |
+| `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt; answer crawlers must be allowed, user-triggered fetchers and Google-Extended are noted, training crawlers reported), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()` |
+| `claim_safety_guard` | regulated categories (food, supplements, health, personal care): prohibited claims block (including "100%" for food, per FSSAI), claims that need proof escalate; superlatives and named competitors need proof in any category |
 | `enrichment_guard` | CRM writes: every field sourced, dated, fresh and confident; forbidden fields and protected attributes never stored; personal contact details need consent; no PII in free text |
 | `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget |
 | `gate` | the deployment gate above |

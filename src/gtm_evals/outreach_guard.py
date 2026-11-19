@@ -12,7 +12,7 @@ lead = {
   "optin_channels": [..],
   "signals": [{"fact": str, "source_url": str, "date": "YYYY-MM-DD"}],
 }
-context = {"today": "YYYY-MM-DD", "suppression": set(), "sent_today_by_inbox": {inbox: n},
+context = {"today": "YYYY-MM-DD", "suppression": set(), "sent_today_by_inbox": {inbox: n}, "bulk_sender": bool,
            "sent_today_by_channel": {"inmail": n, "instagram_dm": n, ...},   # this sender account, today
            "sender_auth": {"spf": True, "dkim": True, "dmarc": True}}
 """
@@ -31,6 +31,7 @@ def _d(s: str) -> date:
 def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
     cfg = policy["outreach"]
     v: list[str] = []
+    notes: list[str] = []
     body = message.get("body", "")
     channel = message.get("channel", "email")
     today = _d(context["today"])
@@ -55,6 +56,11 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
         missing = [k for k in cfg["sender_auth_required"] if not auth.get(k)]
         if missing:
             v.append(f"sender auth missing: {', '.join(missing)}")
+        elif "dmarc" in cfg["sender_auth_required"]:
+            v += _dmarc_problems(auth, cfg, notes)
+        need_one_click = cfg.get("one_click_unsubscribe", "bulk")
+        if need_one_click == "always" or (need_one_click == "bulk" and context.get("bulk_sender")):
+            v += _one_click_problems(message.get("headers"))
     words = len(body.split())
     if words > cfg["max_words"]:
         v.append(f"too long: {words} words > {cfg['max_words']}")
@@ -93,7 +99,7 @@ def check(message: dict, lead: dict, context: dict, policy: dict) -> Verdict:
     if cap is not None and sent >= cap:
         v.append(f"daily {channel} cap reached ({sent}/{cap}) — protects the sender account")
 
-    return Verdict.from_violations("outreach_guard", v)
+    return Verdict.from_violations("outreach_guard", v, notes=notes)
 
 
 def _tokens(s: str) -> set[str]:
@@ -126,6 +132,33 @@ def _undeclared_lead_statements(body: str, claims: list, lead_name: str | None =
     return out
 
 
+def _dmarc_problems(auth: dict, cfg: dict, notes: list[str]) -> list[str]:
+    """Gmail and Outlook bulk rules: DMARC published (p=none is enough) and aligned with SPF or DKIM.
+    auth = {"spf": True, "dkim": True, "dmarc": True, "dmarc_policy": "none", "spf_aligned": True, "dkim_aligned": False}"""
+    out = []
+    pol = auth.get("dmarc_policy")
+    if pol is not None and str(pol).lower() not in cfg.get("dmarc_allowed_policies", ["none", "quarantine", "reject"]):
+        out.append(f"DMARC policy '{pol}' is not a valid p= value")
+    if "spf_aligned" in auth or "dkim_aligned" in auth:
+        if not (auth.get("spf_aligned") or auth.get("dkim_aligned")):
+            out.append("DMARC not aligned: the From domain must match the SPF or DKIM domain")
+    else:
+        notes.append("DMARC alignment not checked: pass sender_auth.spf_aligned / dkim_aligned")
+    return out
+
+
+def _one_click_problems(headers: dict | None) -> list[str]:
+    """RFC 8058: List-Unsubscribe with an https URL, plus List-Unsubscribe-Post: List-Unsubscribe=One-Click."""
+    h = {k.lower(): str(v) for k, v in (headers or {}).items()}
+    out = []
+    lu = h.get("list-unsubscribe", "")
+    if "https://" not in lu.lower():
+        out.append("no one-click unsubscribe: List-Unsubscribe needs an https URL (RFC 8058)")
+    if h.get("list-unsubscribe-post", "").replace(" ", "").lower() != "list-unsubscribe=one-click":
+        out.append("no one-click unsubscribe: missing 'List-Unsubscribe-Post: List-Unsubscribe=One-Click'")
+    return out
+
+
 def deliverability(stats: dict, policy: dict) -> Verdict:
     """stats = {"sent": int, "bounced": int, "spam_complaints": int} for one inbox."""
     cfg = policy["outreach"]
@@ -133,6 +166,11 @@ def deliverability(stats: dict, policy: dict) -> Verdict:
     v = []
     if stats.get("bounced", 0) / sent >= cfg["stop_bounce_rate"]:
         v.append("bounce rate at or above stop threshold — pause inbox")
-    if stats.get("spam_complaints", 0) / sent >= cfg["stop_spam_complaint_rate"]:
-        v.append("spam complaint rate at or above stop threshold — pause inbox")
-    return Verdict.from_violations("deliverability", v)
+    rate = stats.get("spam_complaints", 0) / sent
+    notes = []
+    if rate >= cfg["stop_spam_complaint_rate"]:
+        v.append(f"spam complaint rate {rate:.2%} at or above {cfg['stop_spam_complaint_rate']:.1%} — pause inbox")
+    elif rate >= cfg.get("warn_spam_complaint_rate", 1):
+        notes.append(f"spam complaint rate {rate:.2%} above {cfg['warn_spam_complaint_rate']:.1%} — fix before it reaches "
+                     f"{cfg['stop_spam_complaint_rate']:.1%}")
+    return Verdict.from_violations("deliverability", v, notes=notes)

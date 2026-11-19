@@ -5,7 +5,7 @@ import pytest
 
 from gtm_evals import ai_seo_guard as seo
 
-ANSWER = ["OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Googlebot", "Bingbot"]
+ANSWER = ["OAI-SearchBot", "Claude-SearchBot", "PerplexityBot", "Googlebot", "Bingbot"]
 
 
 class TestRobotsParsing:

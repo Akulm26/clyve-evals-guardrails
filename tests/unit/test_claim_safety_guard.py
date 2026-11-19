@@ -14,7 +14,7 @@ def test_prohibited_in_food(text, policy):
 @pytest.mark.parametrize("text", ["Clinically proven", "dermatologist-tested", "immunity booster", "100% natural",
                                   "chemical-free", "sugar free", "detox blend", "lab tested"])
 def test_needs_proof_escalates(text, policy):
-    v = cs.check(text, "supplement", policy)
+    v = cs.check(text, "skincare", policy)
     assert not v and v.escalate and "needs proof" in v.violations[0]
 
 

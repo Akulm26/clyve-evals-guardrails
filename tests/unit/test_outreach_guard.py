@@ -111,7 +111,8 @@ class TestPrivateMetrics:
 
 
 class TestDeliverability:
-    @pytest.mark.parametrize("stats,ok", [({"sent": 1000, "bounced": 25}, False), ({"sent": 1000, "spam_complaints": 1}, False),
+    @pytest.mark.parametrize("stats,ok", [({"sent": 1000, "bounced": 25}, False), ({"sent": 1000, "spam_complaints": 3}, False),
+                                          ({"sent": 1000, "spam_complaints": 2}, True),
                                           ({"sent": 1000, "bounced": 5}, True), ({}, True)])
     def test_stop_rules(self, stats, ok, policy):
         assert bool(deliverability(stats, policy)) is ok
