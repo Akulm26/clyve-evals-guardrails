@@ -219,6 +219,16 @@ ai_seo:   # technical AI SEO (ContentOS E1/E2). Crawler names change: check each
   visibility_relevant_training: [Google-Extended]
   min_words_without_js: 120        # visible words a no-JavaScript crawler must find on a key page
   require_canonical: true
+  site_pass_share: 0.80            # a per-page check passes site-wide when this share of pages pass it
+  require: [readable_without_js, meta_description, single_h1, open_graph, image_alt, heading_order, llms_txt, feed]
+  challenge_markers: ["cf-challenge", "challenge-platform", "just a moment...", "attention required", "captcha",
+                      "access denied", "verify you are human", "request blocked", "ddos protection"]
+  crawler_user_agents:             # as published by each vendor (check their docs; they change)
+    OAI-SearchBot: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot"
+    Claude-SearchBot: "Mozilla/5.0 (compatible; Claude-SearchBot/1.0; +https://www.anthropic.com)"
+    PerplexityBot: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)"
+    Googlebot: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+    Bingbot: "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
   required_schema_types: [Organization]
   schema_required_fields:          # "a|b" = either field
     Organization: [name, url, "logo|image", sameAs]
@@ -257,6 +267,21 @@ manipulation:   # ethics: escalated for a human to verify, never auto-sent
     - "जल्दी\\s*(करें|करो|कीजिए)"
     - "पछताओगे|पछताएंगे"
 
+offers:   # offer_guard: AI-washing and reference prices. Not legal advice.
+  evidence_ref: "\\[((?:EV|TEST)-[\\w-]+)\\]"
+  ai_claim_patterns:
+    - "\\b\\d{2,3}(\\.\\d+)?\\s?%\\s+(accurate|accuracy|precise|precision)\\b[^.]{0,40}\\b(ai|model|algorithm)\\b"
+    - "\\b(ai|model|algorithm)\\b[^.]{0,40}\\b\\d{2,3}(\\.\\d+)?\\s?%\\s+(accurate|accuracy|precise|precision)\\b"
+    - "\\b(our|the)\\s+ai\\s+(guarantees|ensures|always|never misses)\\b"
+    - "\\b(earn|make)\\s+(?:₹|rs\\.?\\s?|inr\\s?)\\s?[\\d,]+[^.]{0,30}\\bwith\\s+(ai|our ai)\\b"
+    - "\\b(fully|100%)\\s+(autonomous|automated)\\s+ai\\b"
+    - "\\bai[- ]powered\\s+(results|growth|sales)\\s+(guaranteed|assured)\\b"
+  # "was ₹X"-style claims. MRP isn't one: it's the printed maximum retail price (Legal Metrology), checked
+  # against the product's MRP instead.
+  reference_price_patterns: ["\\bwas\\s+", "\\boriginal(ly)?\\s+(price\\s+)?", "\\bregular(ly)?\\s+(price\\s+)?", "~~\\s*"]
+  mrp_pattern: "\\bm\\.?r\\.?p\\.?\\s*:?\\s*"
+  reference_window_days: 30
+
 output:   # output_guard: the last look before anything is sent (OWASP LLM05)
   unfilled_patterns:
     - "\\{\\{\\s*[\\w.]+\\s*\\}\\}"          # {{first_name}}
@@ -277,6 +302,12 @@ provenance:   # #3 + #12: a fact is in the page it cites, and the agent actually
   vocabularies:                             # values that contradict each other within one page
     funding_stage: [pre-seed, seed, series a, series b, series c, series d, ipo, bootstrapped]
     company_size: [1-10, 11-50, 51-200, 201-500, 501-1000, 1000+]
+
+incident:   # the gate checks a kill-switch drill happened recently (docs/16-incident-playbook.md)
+  required_for_tiers: [R2, R3]
+  max_days_since_drill: 90
+  breach_report_hours: 72          # DPDP Rules 2025, Rule 7: detailed report to the Board within 72 hours
+  approver_fatigue: {min_items: 20, max_approval_rate: 0.99, min_median_seconds: 5}
 
 rollout:   # shadow → canary → segment from the decision log (gtm_evals.rollout)
   required_for_actions: [send_bulk, activate_flow, client_crm_bulk_write]
@@ -315,7 +346,7 @@ evidence:   # how much proof a DEPLOYABLE verdict needs (gtm_evals.evidence)
 
 deployment_gate:
   lanes:                     # guards every workflow in a lane must wire in
-    content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard]
+    content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard, offer_guard]
     ai_seo:               [ai_seo_guard, visibility_stats, promise_guard]
     gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard, output_guard]
     marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard, output_guard]
@@ -324,6 +355,7 @@ deployment_gate:
   judge_min_labels: 30
   judge_min_agreement: 0.85
   min_log_retention_days: 90
+  personal_data_log_retention_days: 365   # DPDP Rules 2025, Rule 6: logs kept at least a year
   # Never collected or stored by a workflow (DPDP minimisation; Clyve memory rules)
   forbidden_data_fields: [aadhaar, pan, passport, bank_account, card_number, religion, caste, health, sexual_orientation, political_view]
   # Never used to score, rank or target people (fairness)

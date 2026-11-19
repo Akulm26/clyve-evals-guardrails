@@ -1,7 +1,7 @@
 """gate.check, one rule at a time, on manifests built in memory."""
 import json
 
-from tests.conftest import bind, clean_log, real_golden_rows
+from tests.conftest import bind, clean_log, drilled, real_golden_rows
 
 import copy
 
@@ -39,7 +39,8 @@ def failing(res):
 def evidence(tmp_path):
     gs = tmp_path / "g.jsonl"
     gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
-    return {"golden_set": str(gs), "rollout": {"log": str(clean_log(tmp_path / "decisions.jsonl"))}}
+    return {"golden_set": str(gs), "rollout": {"log": str(clean_log(tmp_path / "decisions.jsonl"))},
+            "incident": drilled(tmp_path)}
 
 
 def test_good_manifest_is_deployable(policy, evidence):
@@ -68,7 +69,8 @@ SAFE_BREAKS = [
     ("no approver for R3", {"human_approver": ""}, "named human approver"),
     ("no canary for R3", {"canary_percent": 0}, "canary first"),
     ("no gate log", {"logging": {"gate_log": False, "retention_days": 365}}, "logged"),
-    ("short retention", {"logging": {"gate_log": True, "retention_days": 30}}, "≥ 90 days"),
+    ("short retention", {"logging": {"gate_log": True, "retention_days": 30}}, "≥ 365 days"),
+    ("personal data needs a year", {"logging": {"gate_log": True, "retention_days": 200}}, "DPDP Rules require a year"),
     ("no token budget", {"token_budget": 0}, "token budget"),
 ]
 
@@ -122,7 +124,7 @@ def test_ai_seo_lane_requires_technical_and_promise_guards(missing, policy, evid
 
 CONTENT = dict(lane="content_ops", actions=["draft", "publish"], approval_log="approvals.jsonl", data={"personal_data": False},
                guards=["claims_gate", "promise_guard", "manipulation_guard", "claim_safety_guard", "pii_guard", "injection_guard",
-                       "testimonial_guard", "likeness_guard", "dark_pattern_guard"])
+                       "testimonial_guard", "likeness_guard", "dark_pattern_guard", "offer_guard"])
 
 
 def test_content_lane_deployable(policy, evidence):
@@ -200,7 +202,7 @@ class TestJudges:
         (sub / "g.jsonl").write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
         write_labels(15, 15).rename(sub / "l.csv")
         clean_log(sub / "d.jsonl")
-        m = make(golden_set="g.jsonl", rollout={"log": "d.jsonl"}, judges=[{"template": "swap_test", "labels": "l.csv",
+        m = make(golden_set="g.jsonl", rollout={"log": "d.jsonl"}, incident=drilled(sub), judges=[{"template": "swap_test", "labels": "l.csv",
                                                 "calibration": {"labelled_cases": 30, "agreement": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}}])
         assert check(bind(m, sub), policy, base_dir=sub)["verdict"] == "DEPLOYABLE"
 

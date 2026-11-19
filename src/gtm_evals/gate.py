@@ -21,7 +21,7 @@ from .evidence import agreement, required_cases, strata_shortfall
 GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
                "automation_guard", "manipulation_guard", "visibility_stats", "action_gate",
                "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard",
-               "testimonial_guard", "likeness_guard", "dark_pattern_guard", "output_guard", "provenance"}
+               "testimonial_guard", "likeness_guard", "dark_pattern_guard", "output_guard", "provenance", "offer_guard"}
 _BASE = [Path.cwd()]
 
 
@@ -32,8 +32,10 @@ def _rows(path):
     return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
 
 
-def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> dict:
-    """Run the safe / ethical / deployable tests on one workflow manifest."""
+def check(manifest: dict, policy: dict, base_dir: str | Path | None = None, today: str | None = None) -> dict:
+    """Run the safe / ethical / deployable tests on one workflow manifest. `today` (ISO date) for the drill check."""
+    from datetime import date
+    t = date.fromisoformat(today) if today else date.today()
     _BASE[:] = [Path(base_dir)] if base_dir else [Path.cwd()]
     g = policy["deployment_gate"]
     gate = ActionGate(policy)
@@ -63,7 +65,10 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
                      "R3 actions run a canary first" + (" (publish: a preview is reviewed before going live)" if preview_ok else "")))
     log = manifest.get("logging", {})
     safe.append((bool(log.get("gate_log")), "every gate decision is logged"))
-    safe.append((log.get("retention_days", 0) >= g["min_log_retention_days"], f"logs kept ≥ {g['min_log_retention_days']} days"))
+    keep = g.get("personal_data_log_retention_days", 0) if (manifest.get("data") or {}).get("personal_data") else 0
+    keep = max(keep, g["min_log_retention_days"])
+    safe.append((log.get("retention_days", 0) >= keep, f"logs kept ≥ {keep} days"
+                 + (" (personal data: DPDP Rules require a year)" if keep > g["min_log_retention_days"] else "")))
     safe.append((bool(manifest.get("token_budget")), "per-run token budget set"))
     if "publish" in actions:
         safe.append((bool(manifest.get("approval_log")), "every publish has a recorded approval (approval_log)"))
@@ -192,6 +197,27 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
             deploy.append((kappa is not None and kappa >= ev["min_kappa"],
                            f"judge '{j.get('template')}' labels agreed by two labellers (κ ≥ {ev['min_kappa']:.2f}"
                            + (f", has {kappa:.2f})" if kappa is not None else ", no second labeller)")))
+    inc_cfg = policy["incident"]
+    if set(tiers.values()) & set(inc_cfg["required_for_tiers"]):
+        inc = manifest.get("incident") or {}
+        pb = next((b / inc["playbook"] for b in _BASE if inc.get("playbook") and (b / inc["playbook"]).exists()), None)
+        deploy.append((pb is not None, f"incident playbook exists ({inc.get('playbook') or 'none'})"))
+        drill = inc.get("last_drill")
+        age = (t - date.fromisoformat(str(drill))).days if drill else None
+        deploy.append((age is not None and 0 <= age <= inc_cfg["max_days_since_drill"],
+                       f"kill-switch drill in the last {inc_cfg['max_days_since_drill']} days"
+                       + (f" (last: {drill}, {age} days ago)" if drill else " (none on record)")))
+        if (manifest.get("data") or {}).get("personal_data"):
+            hrs = inc.get("breach_report_hours")
+            deploy.append((hrs is not None and hrs <= inc_cfg["breach_report_hours"],
+                           f"breach report to the Data Protection Board planned within {inc_cfg['breach_report_hours']} h"))
+    al = manifest.get("approval_log")
+    alp = next((b / al for b in _BASE if isinstance(al, str) and (b / al).is_file()), None)
+    if alp is not None:
+        tired = rollout.approver_fatigue(rollout.read_log(alp), policy)
+        deploy.append((not tired, "approvals are reviews, not rubber stamps"
+                       + "".join(f" ({x['approver']}: {x['approval_rate']:.0%} approved, median {x['median_seconds']:.0f}s "
+                                 f"over {x['items']})" for x in tired)))
     rc_ = policy["rollout"]
     if any(a in actions for a in rc_["required_for_actions"]):
         if log_rows is None:

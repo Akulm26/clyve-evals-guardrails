@@ -19,12 +19,12 @@ Crawler names change; the lists live in the policy (ai_seo.*) so they can be upd
 from __future__ import annotations
 
 import html as _html
+import itertools
 import json
 import re
 from html.parser import HTMLParser
 
 from .core import Verdict
-
 
 # ---------------------------------------------------------------- robots.txt (RFC 9309)
 
@@ -115,6 +115,9 @@ class _Page(HTMLParser):
         self._ld = False
         self._title = False
         self.title = ""
+        self.headings: list[int] = []       # heading levels in document order
+        self.images: list[dict] = []
+        self.props: dict[str, str] = {}     # <meta property="og:…">
 
     def handle_starttag(self, tag, attrs):
         a = {k.lower(): (v or "") for k, v in attrs}
@@ -127,6 +130,12 @@ class _Page(HTMLParser):
             self.skip += 1
         if tag == "meta" and a.get("name"):
             self.meta[a["name"].lower()] = a.get("content", "")
+        if tag == "meta" and a.get("property"):
+            self.props[a["property"].lower()] = a.get("content", "")
+        if re.fullmatch(r"h[1-6]", tag):
+            self.headings.append(int(tag[1]))
+        if tag == "img":
+            self.images.append(a)
         if tag == "link":
             self.links.append(a)
         if tag == "title":
@@ -282,3 +291,87 @@ def check_page(html: str, policy: dict, robots_txt: str | None = None, path: str
         parts.insert(0, crawler_access(robots_txt, policy, path))
     v = [x for p in parts for x in p.violations]
     return Verdict.from_violations("ai_seo_guard", v, notes=[x for p in parts for x in p.notes])
+
+
+# ---------------------------------------------------------------- the reality test: fetched as each crawler
+
+def fetch_results(results: list[dict], policy: dict) -> Verdict:
+    """results: what each answer crawler got when it fetched a key page (saved by `gtm-evals seo --fetch-plan`,
+    or from the CDN's bot logs): [{"agent": "PerplexityBot", "status": 200, "body": "…"}].
+
+    A clean robots.txt means nothing if the firewall answers 403 or a challenge page."""
+    cfg = policy["ai_seo"]
+    by = {r.get("agent"): r for r in results or []}
+    v, notes = [], []
+    for bot in cfg["answer_crawlers"]:
+        r = by.get(bot)
+        if r is None:
+            notes.append(f"no fetch result for {bot}")
+            continue
+        status, body = int(r.get("status") or 0), (r.get("body") or "")[:20000].lower()
+        if status != 200:
+            v.append(f"{bot} got HTTP {status}" + (" (blocked by the firewall or CDN)" if status in (401, 403, 429, 503) else ""))
+        elif any(m in body for m in cfg["challenge_markers"]):
+            v.append(f"{bot} got a challenge page, not the content")
+    notes.append("a user-agent test from your machine doesn't come from the crawler's IP: CDNs verify bots by IP, "
+                 "so confirm in the CDN's bot logs too")
+    return Verdict.from_violations("ai_seo_guard", v, notes=notes)
+
+
+def fetch_plan(url: str, policy: dict) -> str:
+    """curl commands that save one result per answer crawler, ready for fetch_results()."""
+    lines = ["# Run from a server, not your laptop if you can. Then: gtm-evals seo --fetch-results fetch.json",
+             "echo '[' > fetch.json"]
+    bots = policy["ai_seo"]["answer_crawlers"]
+    for i, bot in enumerate(bots):
+        ua = policy["ai_seo"]["crawler_user_agents"].get(bot, bot)
+        sep = "," if i < len(bots) - 1 else ""
+        lines.append(f"curl -s -o /tmp/body.html -w '%{{http_code}}' -A '{ua}' '{url}' | "
+                     f"python3 -c \"import json,sys;print(json.dumps({{'agent':'{bot}','status':int(sys.stdin.read()),"
+                     f"'body':open('/tmp/body.html',errors='ignore').read()[:20000]}})+'{sep}')\" >> fetch.json")
+    lines.append("echo ']' >> fetch.json")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- site-wide checks (the 80% rule)
+
+def page_checks(html: str, policy: dict) -> dict[str, bool]:
+    """Per-page hygiene that answer engines lean on. True = passes."""
+    p = _page(html)
+    h = p.headings
+    return {
+        "readable_without_js": bool(raw_html(html, policy)),
+        "meta_description": bool(p.meta.get("description", "").strip()),
+        "single_h1": h.count(1) == 1,
+        "open_graph": bool(p.props.get("og:title") and p.props.get("og:description")),
+        "image_alt": all("alt" in img for img in p.images),
+        "heading_order": all(b - a <= 1 for a, b in itertools.pairwise(h)),
+    }
+
+
+def check_site(pages: dict[str, str], policy: dict, site_files: dict[str, str] | None = None) -> Verdict:
+    """pages: {path: saved HTML}. A per-page check passes when ≥ site_pass_share of pages pass it.
+    site_files: {"llms.txt": text, "feed.xml": text, ...} for the site-level checks."""
+    cfg = policy["ai_seo"]
+    need = cfg["site_pass_share"]
+    req = cfg["require"]
+    v, notes = [], []
+    results = {path: page_checks(html, policy) for path, html in (pages or {}).items()}
+    if not results:
+        return Verdict.from_violations("ai_seo_guard", ["no pages given"])
+    for check in [c for c in req if c in next(iter(results.values()))]:
+        bad = sorted(p for p, r in results.items() if not r[check])
+        share = 1 - len(bad) / len(results)
+        if share < need:
+            v.append(f"{check.replace('_', ' ')}: {share:.0%} of pages pass, need {need:.0%} "
+                     f"(e.g. {', '.join(bad[:3])})")
+        elif bad:
+            notes.append(f"{check.replace('_', ' ')}: {len(bad)} page(s) fail ({', '.join(bad[:3])})")
+    files = {k.lower().lstrip("/"): t for k, t in (site_files or {}).items()}
+    if "llms_txt" in req and not files.get("llms.txt", "").strip():
+        v.append("no /llms.txt")
+    if "feed" in req:
+        has_link = any(re.search(r'type=["\']application/(rss|atom)\+xml', h, re.IGNORECASE) for h in pages.values())
+        if not has_link and not any(k.endswith((".xml", ".rss", ".atom")) and "<" in t for k, t in files.items()):
+            v.append("no RSS or Atom feed (linked from pages or saved as a site file)")
+    return Verdict.from_violations("ai_seo_guard", v, notes=notes)

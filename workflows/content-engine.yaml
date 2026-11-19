@@ -4,7 +4,7 @@ owner: Akul
 lane: content_ops
 status: pilot
 actions: [draft, report_draft, publish]
-guards: [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard]
+guards: [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard, offer_guard]
 judges:
   - template: swap_test
     calibration: {labelled_cases: 0, agreement: 0}     # Q3 not done yet

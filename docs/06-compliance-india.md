@@ -19,6 +19,11 @@
 
 **Practical line:** build as if the May 2027 obligations already apply. Adding two fields now is cheap. Retrofitting consent tracking into a live pipeline isn't.
 
+### Logs and breaches (DPDP Rules 2025)
+
+- **Logs for a year.** Rule 6 asks data fiduciaries to keep personal data, traffic data and processing logs for at least one year. → the gate wants `retention_days ≥ 365` for workflows with personal data.
+- **Breaches.** Rule 7: tell the Board and each affected person without delay, then send the Board a detailed report within 72 hours (extendable on request). → `incident.breach_report_hours ≤ 72` and docs/16-incident-playbook.md.
+
 ## SMS and calls: TRAI TCCCPR (2018, amended Feb 2025)
 
 - **Mixed messages count as promotional.** If promotional content is mixed into a service or transactional message, the whole message is treated as promotional and the promotional pre-checks apply. [Khaitan & Co]

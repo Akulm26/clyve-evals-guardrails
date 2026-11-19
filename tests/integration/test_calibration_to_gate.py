@@ -20,6 +20,11 @@ def setup_repo(root, tmp_path, labels_src):
     gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
     (repo / "logs").mkdir()
     clean_log(repo / "logs" / "decisions.jsonl")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "16-incident-playbook.md").write_text("# playbook\n", encoding="utf-8")
+    from datetime import date
+    wf.write_text(wf.read_text(encoding="utf-8").replace("last_drill: null", f"last_drill: {date.today().isoformat()}"),
+                  encoding="utf-8")
     return repo, wf
 
 

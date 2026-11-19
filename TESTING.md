@@ -7,10 +7,10 @@ A library that decides whether an automation may reach real people has to be tes
   system   20    │ built wheel → fresh venv → `gtm-evals` from   │  slowest · what a stranger sees
                  │ an empty folder · container image             │
                  ├──────────────────────────────────────────────┤
-  integration 91 │ CLI in-process · real policy files · repo     │  modules together
+  integration 109│ CLI in-process · real policy files · repo     │  modules together
                  │ manifests · pipeline · label sheet → gate     │
                  ├──────────────────────────────────────────────┤
-  unit    462    │ one module at a time · every guard rule ·     │  fastest · run on every save
+  unit    807    │ one module at a time · every guard rule ·     │  fastest · run on every save
                  │ every gate rule · edge cases                  │
                  └──────────────────────────────────────────────┘
   evals          golden sets, adversarial fuzz, held-out set: how good the guards are, not whether the code runs

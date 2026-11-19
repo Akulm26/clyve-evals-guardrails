@@ -16,6 +16,10 @@ canary_percent: 5
 rollout:                         # live proof: 7 clean days in shadow, 7 in canary, then segment (policy defaults)
   log: logs/decisions.jsonl      # one row per lead handled; written by the n8n flow (docs/15-rollout.md)
 budgets: {usd_per_item: 0.25, p95_seconds: 90}
+incident:
+  playbook: docs/16-incident-playbook.md
+  last_drill: null               # run the kill-switch drill and put the date here
+  breach_report_hours: 72        # DPDP Rule 7: detailed report to the Board within 72 hours
 kill_switch: CLYVE_KILL_SWITCH
 token_budget: 200000
 logging: {gate_log: true, retention_days: 365}

@@ -120,3 +120,23 @@ def status(rollout: dict, rows: list[dict], policy: dict, budgets: dict | None =
     done = i == len(stages) - 1 and clean >= stages[i]["days"]
     return {"stage": stages[i]["name"], "stage_index": i, "clean_days": clean, "days_needed": stages[i]["days"],
             "complete": done, "history": history, "stages": [s["name"] for s in stages]}
+
+
+def approver_fatigue(rows: list[dict], policy: dict) -> list[dict]:
+    """Approvers who pass nearly everything in seconds: a sign-off that isn't a review.
+    rows: approval-log lines [{"approver": "Akul", "approved": true, "seconds": 3.2}]."""
+    cfg = policy["incident"]["approver_fatigue"]
+    by: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        if r.get("approver"):
+            by[r["approver"]].append(r)
+    out = []
+    for who, rs in sorted(by.items()):
+        if len(rs) < cfg["min_items"]:
+            continue
+        rate = sum(bool(r.get("approved")) for r in rs) / len(rs)
+        secs = sorted(float(r["seconds"]) for r in rs if r.get("seconds") is not None)
+        med = secs[len(secs) // 2] if secs else None
+        if rate >= cfg["max_approval_rate"] and med is not None and med < cfg["min_median_seconds"]:
+            out.append({"approver": who, "items": len(rs), "approval_rate": rate, "median_seconds": med})
+    return out

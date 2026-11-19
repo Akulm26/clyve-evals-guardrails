@@ -207,3 +207,13 @@ def clean_log(path, days=28, per_day=30, start="2026-10-01", **row):
                                           replied=i < 3 if "replied" not in row else row["replied"])))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
+
+
+def drilled(base, days_ago=10):
+    """An incident block: a playbook file under `base` and a kill-switch drill `days_ago` days ago."""
+    from datetime import date as _date
+    from datetime import timedelta as _td
+    from pathlib import Path
+    pb = Path(base) / "incident.md"
+    pb.write_text("# Incident playbook\n", encoding="utf-8")
+    return {"playbook": str(pb), "last_drill": (_date.today() - _td(days=days_ago)).isoformat(), "breach_report_hours": 72}

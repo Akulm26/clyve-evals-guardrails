@@ -1,8 +1,23 @@
 # Changelog
 
-## Unreleased (0.2.0)
+## 0.2.0 — 19 Nov 2026
 
-Phases 0 to 4 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+All six phases (0–5) of the adoption plan. Guardrails and evals shipped together, with each phase pairing work on both. Guardrails and evals ship together, one item on each track per phase.
+
+### Phase 5 · AI SEO and claims + operations
+
+Guardrails
+- **AI SEO reality test.** `ai_seo_guard.fetch_results()`: what each answer crawler got from a key page. HTTP 403/429/503 or a challenge page fails, even with a clean robots.txt. `gtm-evals seo --fetch-plan URL` prints the curl commands that save the results; `--fetch-results fetch.json` checks them. A note reminds you that CDNs verify bots by IP, so confirm in the CDN's bot logs.
+- **Site-wide checks.** `ai_seo_guard.check_site()` and `gtm-evals seo --site pages/`: readable without JavaScript, meta description, one H1, Open Graph, image alt text and heading order, each passing on ≥ 80% of pages; plus `/llms.txt` and an RSS or Atom feed.
+- **`offer_guard` (new).** AI accuracy, earnings and "fully autonomous" claims need a test-evidence ID in the register (`[EV-2026-014]`). A "was ₹X" price must be the lowest price of the last 30 days†. MRP is checked against the printed MRP instead (Legal Metrology). Required in `content_ops`.
+
+Evals
+- **Incident drill.** Workflows with R2 or R3 actions need an incident playbook and a kill-switch drill in the last 90 days (`incident: {playbook, last_drill, breach_report_hours}`). With personal data, the plan must report to the Data Protection Board within 72 hours (DPDP Rule 7). See docs/16-incident-playbook.md.
+- **Logs for a year.** Workflows that handle personal data need `retention_days ≥ 365` (DPDP Rules 2025).
+- **Approver fatigue.** When `approval_log` is a file, an approver who passes ≥ 99% of at least 20 items with a median under 5 seconds keeps the workflow at PILOT ONLY.
+- **Controls map.** docs/controls.md maps each guard to the OWASP LLM Top 10 (2025), NIST AI 600-1, ISO/IEC 42001 Annex A and MITRE ATLAS, and names the gaps.
+- `gate.check(..., today=)` for reproducible drill checks.
+- 10 golden cases (p5-01 to p5-10); 121 in `evals/lanes.jsonl`.
 
 ### Phase 4 · Agent safety + live proof
 

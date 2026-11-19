@@ -17,7 +17,7 @@ from pathlib import Path
 
 from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dark_pattern_guard, dpdp_guard,
                enrichment_guard, injection_guard, isolation, likeness_guard, manipulation_guard, outreach_guard,
-               output_guard, pii_guard, promise_guard, provenance, testimonial_guard, visibility_stats)
+               offer_guard, output_guard, pii_guard, promise_guard, provenance, testimonial_guard, visibility_stats)
 from .core import Verdict
 
 
@@ -70,6 +70,8 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":
         return enrichment_guard.check_write(x["record"], policy, x["today"])
+    if g == "offer":
+        return offer_guard.check(x["text"], policy, x.get("evidence_ids"), x.get("price_history"), x.get("today"), x.get("mrp"))
     if g == "output":
         return output_guard.check(x["text"], policy, x.get("context"))
     if g == "provenance":
@@ -85,6 +87,10 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
     if g == "ai_seo_page":
         return ai_seo_guard.check_page(x["html"], policy, x.get("robots"), x.get("path", "/"),
                                        x.get("must_contain"), x.get("schema"))
+    if g == "ai_seo_fetch":
+        return ai_seo_guard.fetch_results(x["results"], policy)
+    if g == "ai_seo_site":
+        return ai_seo_guard.check_site(x["pages"], policy, x.get("site_files"))
     if g == "ai_seo_entity":
         return ai_seo_guard.entity_consistency(x["profiles"], x["canonical"], policy)
     raise ValueError(f"unknown guard '{g}' in case {row.get('id')}")

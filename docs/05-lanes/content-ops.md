@@ -55,3 +55,5 @@ draft
 | A landing page or checkout pre-ticks an add-on, hides a fee until the last step, or shames people who decline | `dark_pattern_guard` |
 
 Keep the testimonial register next to the claims register: `id`, `quote` (exact), `author`, `source`, `date`, `consent`, and `ai_generated` / `insider` flags. The likeness register holds `id`, `name`, `consent`, `scope` (e.g. `ads`, `social`) and `expires`.
+| "98% accurate AI", "earn ₹50,000 a month with AI" | `offer_guard`: needs a registered test-evidence ID |
+| "Was ₹799, now ₹549" when it sold at ₹549 all month | `offer_guard`: the reference price must be the 30-day low; MRP is checked against the pack |

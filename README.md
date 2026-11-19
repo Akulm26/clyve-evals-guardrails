@@ -112,6 +112,8 @@ Does an LLM write or send anything a customer, prospect or the public will see?
 | writes the same claim or pressure in Hinglish or Hindi | "sardi ka ilaaj", "sirf 2 slot bache", "result pakka", "इलाज" | `claim_safety_guard`, `manipulation_guard`, `promise_guard` |
 | cold-DMs on Instagram, or lets the WhatsApp bot act as a general assistant | a first DM to someone who never messaged you; "write my essay" answered | `outreach_guard`, `automation_guard.check_reply` |
 | scores leads on something that stands in for caste or religion | `scoring_features: [pincode]` with no fairness test | the deployment gate (proxies) |
+| claims "98% accurate AI" or a "was ₹799" price it never charged | no test evidence; a reference price above the 30-day low | `offer_guard` |
+| has a clean robots.txt but a firewall that challenges AI crawlers | PerplexityBot gets "Just a moment…" | `ai_seo_guard.fetch_results` |
 | sends "Hi {{first_name}}", greets the wrong person, or links somewhere it made up | "Hi Priya" to Rhea; a bit.ly link | `output_guard` |
 | writes "Series A" to the CRM from a page that says "seed", or cites a page it never opened | | `provenance` |
 | lets one client's data surface in another's output | a vector search with no client filter | `isolation` |
@@ -353,15 +355,19 @@ Example — unsafe WhatsApp win-back flow  →  BLOCKED
   …
 
 Clyve teardown outreach  →  PILOT ONLY
-  SAFE        ✅ all 10 checks
+  SAFE        ✅ all 12 checks
   ETHICAL     ✅ all 7 checks
   DEPLOYABLE
     ❌ ≥ 35 real cases to show 90% ±10% at 95% confidence (has 0)
     ❌ real cases cover each stratum (short: standard 14, ambiguous 13, adversarial 9)
     ❌ judge 'personalisation_factuality' calibrated (≥30 labels, ≥85% agreement)
+    ❌ judge 'personalisation_factuality' labels agreed by two labellers (κ ≥ 0.80, no second labeller)
+    ❌ kill-switch drill in the last 90 days (none on record)
+    ❌ live rollout log attached (rollout: {log, stages}); offline cases alone can't make it DEPLOYABLE
+    …
 ```
 
-The second verdict is deliberate: Clyve's own outreach is safe and ethical by design, but it stays PILOT ONLY (a human checks every send) until it has 35 real cases behind it, labelled by two people who agree.
+The second verdict is deliberate: Clyve's own outreach is safe and ethical by design, but it stays PILOT ONLY (a human checks every send) until it has 35 real cases behind it, labelled by two people who agree, a kill-switch drill on record, and a live log that has earned its way from shadow to segment.
 
 Each manifest names its **lane**, and every lane has guards it must wire in, or the gate blocks it:
 
@@ -369,7 +375,7 @@ Each manifest names its **lane**, and every lane has guards it must wire in, or 
 |---|---|---|
 | `marketing_automation` | automation_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard · output_guard | bot replies disclose they're automated and reach a human |
 | `gtm_engineering` | outreach_guard · promise_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard · output_guard | CRM writes go through enrichment_guard and provenance |
-| `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard · testimonial_guard · likeness_guard · dark_pattern_guard | every publish has a recorded approval and a preview |
+| `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard · testimonial_guard · likeness_guard · dark_pattern_guard · offer_guard | every publish has a recorded approval and a preview |
 | `ai_seo` (was `ai_visibility`) | ai_seo_guard · visibility_stats · promise_guard | reports can't promise citations or rankings |
 
 Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
@@ -380,11 +386,11 @@ Details: [docs/12-deployment-gate.md](docs/12-deployment-gate.md).
 
 | Route | Command |
 |---|---|
-| **pip (pinned release)** | `pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.1"` |
-| **pip (wheel from the release)** | `pip install https://github.com/Akulm26/clyve-evals-guardrails/releases/download/v0.1.1/gtm_evals-0.1.1-py3-none-any.whl` |
-| **GitHub Action** | `uses: Akulm26/clyve-evals-guardrails@v0.1.1` (see below) |
-| **Docker (GitHub Packages)** | `docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:0.1.1 --help` |
-| **with LLM judges** | add `[judges]`: `pip install "gtm-evals[judges] @ git+https://github.com/Akulm26/clyve-evals-guardrails@v0.1.1"` |
+| **pip (pinned release)** | `pip install "git+https://github.com/Akulm26/clyve-evals-guardrails@v0.2.0"` |
+| **pip (wheel from the release)** | `pip install https://github.com/Akulm26/clyve-evals-guardrails/releases/download/v0.2.0/gtm_evals-0.2.0-py3-none-any.whl` |
+| **GitHub Action** | `uses: Akulm26/clyve-evals-guardrails@v0.2.0` (see below) |
+| **Docker (GitHub Packages)** | `docker run --rm -v "$PWD:/work" ghcr.io/akulm26/gtm-evals:0.2.0 --help` |
+| **with LLM judges** | add `[judges]`: `pip install "gtm-evals[judges] @ git+https://github.com/Akulm26/clyve-evals-guardrails@v0.2.0"` |
 
 ## Quickstart
 
@@ -407,11 +413,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Akulm26/clyve-evals-guardrails@v0.1.1
+      - uses: Akulm26/clyve-evals-guardrails@v0.2.0
         with:
           command: gate                 # gate | eval | check
           args: "workflows/*.yaml"
-      - uses: Akulm26/clyve-evals-guardrails@v0.1.1
+      - uses: Akulm26/clyve-evals-guardrails@v0.2.0
         with:
           command: eval
           args: "evals/golden.jsonl"
@@ -449,13 +455,14 @@ Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `
 | `injection_guard` | flags instruction-like text; `wrap()` marks scraped/inbound text as untrusted data |
 | `pii_guard` | email, Indian mobile, PAN, Aadhaar; `redact()` / `restore()` around model calls |
 | `visibility_stats` | frozen prompt-set hash, no blended numbers, app vs API separation, `real_change()` (noise + chance band), `smallest_provable_move()` |
-| `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt; answer crawlers must be allowed, user-triggered fetchers and Google-Extended are noted, training crawlers reported), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()` |
+| `ai_seo_guard` | `crawler_access()` (RFC 9309 robots.txt; answer crawlers must be allowed, user-triggered fetchers and Google-Extended are noted, training crawlers reported), `raw_html()` (readable without JavaScript, noindex, canonical, title), `schema()` (JSON-LD types and required fields), `entity_consistency()` (one name and description across channels), `check_page()`, `fetch_results()` (what each answer crawler got past the firewall), `check_site()` (site-wide, 80% rule; llms.txt, feed) |
 | `claim_safety_guard` | regulated categories (food, supplements, health, personal care): prohibited claims block (including "100%" for food, per FSSAI), claims that need proof escalate; superlatives and named competitors need proof in any category |
 | `enrichment_guard` | CRM writes: every field sourced, dated, fresh and confident; forbidden fields and protected attributes never stored; personal contact details need consent; no PII in free text |
 | `dpdp_guard` | India's DPDP Act + Rules: no behavioural targeting where minors may be in the audience, parental-consent records, consent-notice checker, consent record per contact (opt-in) |
 | `testimonial_guard` | every quoted testimonial matches a registered, consented, sourced entry word for word (reworded quotes escalate); no AI-written or undisclosed insider reviews; social-proof counters and star ratings need a live source (ASCI; FTC 16 CFR 465) |
 | `likeness_guard` | real faces and voices need a consent record that covers the use and hasn't expired; synthetic image, video and audio need a visible AI label (audio: at the start); synthetic people can't pose as customers (MeitY 2026 rules; ASCI AI-ad guidelines) |
 | `dark_pattern_guard` | checkout and flow specs against India's 2023 dark-pattern guidelines: pre-selected add-ons, fake countdowns, confirm-shaming, drip pricing, disguised ads, nagging, trick questions, forced actions, subscription traps |
+| `offer_guard` | AI accuracy, earnings and autonomy claims need a registered test-evidence ID; "was ₹X" must be the 30-day low; MRP must match the pack |
 | `output_guard` | the last look before sending: unfilled placeholders (`{{first_name}}`, `*|FNAME|*`), a greeting that doesn't match the CRM name, links off the allowlist, raw HTML in plain-text channels, script markup |
 | `provenance` | `check_record()`: each enriched value appears in its saved source page (contradictions named); `check_trace()`: each claim in a research note cites a page a lookup in the trace actually fetched |
 | `isolation` | `check_retrieval()` (client filter on every lookup), `check_memory()` (agent-written notes are untrusted data), `check_tools()` (no tool scope above what the actions need) |
@@ -567,6 +574,8 @@ The `docs/` folder is the thinking behind the code:
 13-judge-calibration.md   labelling sheet → agreement → manifest
 14-related-work.md        9 outside GTM evals, benchmarks and skill packs, and what to adopt
 15-rollout.md             shadow → canary → segment from the decision log; budgets
+16-incident-playbook.md   the first hour, DPDP's 72-hour report, the 90-day drill
+controls.md               each guard mapped to OWASP LLM Top 10, NIST AI 600-1, ISO 42001, MITRE ATLAS
 ```
 
 ## Repo layout
@@ -587,7 +596,7 @@ tests/                unit/ · integration/ · system/ (see TESTING.md)
 
 ## Testing
 
-573 tests in three layers: **unit** (462, every guard and gate rule), **integration** (91, every CLI command, the full pipeline, label sheet → gate) and **system** (20, the built wheel in a fresh venv, plus the container). Coverage is 99% and CI fails below 95%. No test calls a real model.
+936 tests in three layers: **unit** (807, every guard and gate rule), **integration** (109, every CLI command, the full pipeline, label sheet → gate) and **system** (20, the built wheel in a fresh venv, plus the container). Coverage is 99% and CI fails below 95%. No test calls a real model.
 
 ```bash
 python -m pytest              # unit + integration

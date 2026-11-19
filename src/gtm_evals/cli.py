@@ -204,11 +204,23 @@ def cmd_seo(a):
         sections.append(("readable without JavaScript", ai_seo_guard.raw_html(html, p, a.must)))
         types = [t.strip() for t in a.schema.split(",")] if a.schema else None
         sections.append(("schema (JSON-LD)", ai_seo_guard.schema(html, p, types)))
+    if a.fetch_plan:
+        print(ai_seo_guard.fetch_plan(a.fetch_plan, p))
+        return 0
+    if a.fetch_results:
+        sections.append(("fetched as each answer crawler (firewall / CDN)", ai_seo_guard.fetch_results(json.loads(read(a.fetch_results)), p)))
+    if a.site:
+        d = Path(a.site)
+        pages = {str(f.relative_to(d)): f.read_text(encoding="utf-8", errors="ignore") for f in sorted(d.rglob("*.htm*"))}
+        files = {f.name: f.read_text(encoding="utf-8", errors="ignore") for f in d.iterdir()
+                 if f.is_file() and f.suffix.lower() in (".txt", ".xml", ".rss", ".atom")}
+        sections.append((f"site-wide ({len(pages)} pages, {p['ai_seo']['site_pass_share']:.0%} rule)",
+                         ai_seo_guard.check_site(pages, p, files)))
     if a.entity:
         d = json.loads(read(a.entity))
         sections.append(("entity consistency", ai_seo_guard.entity_consistency(d["profiles"], d["canonical"], p)))
     if not sections:
-        print(f"{NO} give a page, --robots or --entity (see: gtm-evals seo --help)", file=sys.stderr)
+        print(f"{NO} give a page, --robots, --site, --fetch-results or --entity (see: gtm-evals seo --help)", file=sys.stderr)
         return 2
     if a.json:
         print(json.dumps({t: (v.to_dict() if hasattr(v, "to_dict") else v) for t, v in sections}, indent=1, ensure_ascii=False))
@@ -404,6 +416,9 @@ def main(argv=None):
     p.add_argument("--must", action="append", help="a phrase that must be in the raw HTML (repeatable)")
     p.add_argument("--schema", help="required schema types, comma-separated (default from policy: Organization)")
     p.add_argument("--entity", help='JSON: {"canonical": {...}, "profiles": {channel: {name, description}}}')
+    p.add_argument("--site", help="a folder of saved pages (+ llms.txt, feed.xml): site-wide checks, 80%% rule")
+    p.add_argument("--fetch-results", help="JSON from --fetch-plan: what each answer crawler got")
+    p.add_argument("--fetch-plan", metavar="URL", help="print curl commands that fetch URL as each answer crawler")
     p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_seo)
     p = sub.add_parser("visibility", help="did AI visibility really move?"); p.add_argument("runs"); p.add_argument("--before", default="day0"); p.add_argument("--after", default="day30"); p.add_argument("--engine"); common(p); p.set_defaults(fn=cmd_visibility)
     p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "agreement", "calibrate", "packet"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")

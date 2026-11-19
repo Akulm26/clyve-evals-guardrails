@@ -76,3 +76,14 @@ The smallest move you can prove depends on how many prompts there are per query 
 - Brand and niche queries: movement as a direction, typically weeks.
 - Generic "best X" queries: never a promise or a timeline. They depend on third-party coverage.
 - No answer positions or rankings promised, ever. `promise_guard` enforces this in copy.
+
+
+## Added in 0.2.0
+
+| Failure | Guard |
+|---|---|
+| robots.txt allows PerplexityBot, but the firewall serves it a challenge page | `ai_seo_guard.fetch_results()`; `gtm-evals seo --fetch-plan URL` then `--fetch-results fetch.json` |
+| One page is perfect, the other 40 have no meta description | `ai_seo_guard.check_site()`; `gtm-evals seo --site pages/` (each check must pass on ≥ 80% of pages) |
+| No `/llms.txt` and no feed | site-level checks in `check_site()` |
+
+A user-agent test from your own machine doesn't come from the crawler's IP range. Cloudflare and other CDNs verify good bots by IP, so a pass here is necessary, not sufficient: confirm in the CDN's bot analytics.
