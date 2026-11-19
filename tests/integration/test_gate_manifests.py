@@ -1,6 +1,6 @@
 import json
 
-from tests.conftest import bind, real_golden_rows
+from tests.conftest import bind, clean_log, real_golden_rows
 import copy
 import sys
 from pathlib import Path
@@ -35,6 +35,7 @@ def test_deployable_when_evidence_real(tmp_path, monkeypatch):
                       + "\n".join(f"L{i},msg,{v},{v}" for i in range(30) for v in ['pass' if i % 2 else 'fail']))
     m["judges"][0]["labels"] = str(labels)
     m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}
+    m["rollout"]["log"] = str(clean_log(tmp_path / "decisions.jsonl"))
     assert check(bind(m), P)["verdict"] == "DEPLOYABLE"
 
 

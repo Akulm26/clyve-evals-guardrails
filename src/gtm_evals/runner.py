@@ -16,8 +16,8 @@ import re
 from pathlib import Path
 
 from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dark_pattern_guard, dpdp_guard,
-               enrichment_guard, injection_guard, likeness_guard, manipulation_guard, outreach_guard, pii_guard,
-               promise_guard, testimonial_guard, visibility_stats)
+               enrichment_guard, injection_guard, isolation, likeness_guard, manipulation_guard, outreach_guard,
+               output_guard, pii_guard, promise_guard, provenance, testimonial_guard, visibility_stats)
 from .core import Verdict
 
 
@@ -32,6 +32,8 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         rid = row.get("id", "?") if isinstance(row, dict) else "?"
         raise ValueError(f"case {rid}: not a golden-set row (needs 'guard', 'input' and 'expected_pass'; see the README)")
     g, x = row["guard"], row["input"]
+    if row.get("as_of"):
+        x = as_of(x, row["as_of"])
     if g == "claims":
         return claims_gate.check(x["text"], _register(x.get("register"), base), policy)
     if g == "promise":
@@ -68,6 +70,14 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":
         return enrichment_guard.check_write(x["record"], policy, x["today"])
+    if g == "output":
+        return output_guard.check(x["text"], policy, x.get("context"))
+    if g == "provenance":
+        return provenance.check_record(x["record"], x.get("pages", {}), policy)
+    if g == "tool_use":
+        return provenance.check_trace(x["claims"], x.get("trace", []), policy)
+    if g == "isolation_retrieval":
+        return isolation.check_retrieval(x["request"], x["tenant"])
     if g == "assert":
         return check_assertions(x["output"], x.get("must_demonstrate", []), x.get("must_avoid", []))
     if g == "ai_seo_crawlers":
@@ -78,6 +88,28 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
     if g == "ai_seo_entity":
         return ai_seo_guard.entity_consistency(x["profiles"], x["canonical"], policy)
     raise ValueError(f"unknown guard '{g}' in case {row.get('id')}")
+
+
+_DATE_KEYS = ("date", "ts", "at", "recorded_at", "observed_at", "created_at")
+
+
+def _stamp(d: dict) -> str | None:
+    return next((str(d[k])[:10] for k in _DATE_KEYS if d.get(k)), None)
+
+
+def as_of(x, day: str):
+    """Replay an input as it stood on `day`: anything dated later is hidden, and "today" becomes `day`.
+    A CRM-history case can't pass on a signal that was only recorded after the decision."""
+    if isinstance(x, list):
+        return [as_of(i, day) for i in x if not (isinstance(i, dict) and (_stamp(i) or "") > day)]
+    if isinstance(x, dict):
+        out = {}
+        for k, val in x.items():
+            if isinstance(val, dict) and (_stamp(val) or "") > day:
+                continue
+            out[k] = day if k in ("today", "now") else as_of(val, day)
+        return out
+    return x
 
 
 def check_assertions(output: str, must_demonstrate: list[str], must_avoid: list[str]) -> Verdict:

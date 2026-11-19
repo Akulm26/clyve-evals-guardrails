@@ -17,6 +17,18 @@ class ActionGate:
     def __init__(self, policy: dict):
         self.cfg = policy["action_gate"]
         self.tokens_used = 0
+        self.recent: list[bool] = []   # guard outcomes, newest last (circuit breaker)
+
+    def record(self, verdict: Verdict) -> None:
+        """Feed every guard verdict here; the breaker trips when too many recent ones failed."""
+        self.recent.append(bool(verdict.passed))
+        self.recent = self.recent[-self.cfg.get("circuit_breaker", {}).get("window", 50):]
+
+    def breaker_open(self) -> bool:
+        cb = self.cfg.get("circuit_breaker") or {}
+        if len(self.recent) < cb.get("min_items", 10):
+            return False
+        return self.recent.count(False) / len(self.recent) > cb.get("max_fail_rate", 0.2)
 
     def tier(self, action: str) -> str:
         # Unknown actions get the strictest tier. Demote only with evidence.
@@ -33,6 +45,8 @@ class ActionGate:
 
         if os.environ.get(self.cfg["kill_switch_env"]) and tier != "R0":
             v.append("kill switch is on")
+        if tier != "R0" and self.breaker_open():
+            v.append(f"circuit breaker open: guards failed on {self.recent.count(False)} of the last {len(self.recent)} items")
         if self.tokens_used > self.cfg["max_tokens_per_run"]:
             v.append(f"token budget exceeded ({self.tokens_used})")
         if req["checks"]:

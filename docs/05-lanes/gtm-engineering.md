@@ -65,3 +65,7 @@ In this lane, a workflow with `crm_update` must wire in `enrichment_guard` or th
 | A cold Instagram DM to a founder who never messaged you | `outreach_guard`: a reply within 24 hours of their message, or one private reply to their comment within 7 days |
 | Lead scoring on `pincode` or `surname`, which can stand in for caste or religion | the gate blocks unless `fairness_tests` shows an impact ratio ≥ 0.80 |
 | A research note turns "unknown" into "Series A (verified)" | an assertion case: `guard: assert` with `must_demonstrate` / `must_avoid` |
+| The enrichment agent writes "Series A" from a page that says "seed" | `provenance.check_record()` against the saved page; CRM writes need `provenance` |
+| A research note cites a page the agent never opened | `provenance.check_trace()` against the tool trace (`trace_required_for: [research_note]`) |
+| "Hi {{first_name}}" or "Hi Priya" to Rhea goes out | `output_guard` (now required in this lane) |
+| A bulk send goes to the whole list on offline tests alone | `rollout:` stages from the decision log ([docs/15](../15-rollout.md)) |

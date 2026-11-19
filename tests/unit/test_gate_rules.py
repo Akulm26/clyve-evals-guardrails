@@ -1,7 +1,7 @@
 """gate.check, one rule at a time, on manifests built in memory."""
 import json
 
-from tests.conftest import bind, real_golden_rows
+from tests.conftest import bind, clean_log, real_golden_rows
 
 import copy
 
@@ -12,7 +12,7 @@ from gtm_evals.gate import check, report
 GOOD = {
     "name": "wf", "owner": "Akul", "lane": "gtm_engineering",
     "actions": ["score_lead", "send_single", "send_bulk"],
-    "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard", "dpdp_guard"],
+    "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard", "dpdp_guard", "output_guard"],
     "human_approver": "Akul", "canary_percent": 5, "kill_switch": "KS", "token_budget": 1000,
     "logging": {"gate_log": True, "retention_days": 365},
     "data": {"personal_data": True, "fields": ["name", "work_email"], "lawful_basis_field": True,
@@ -39,7 +39,7 @@ def failing(res):
 def evidence(tmp_path):
     gs = tmp_path / "g.jsonl"
     gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
-    return {"golden_set": str(gs)}
+    return {"golden_set": str(gs), "rollout": {"log": str(clean_log(tmp_path / "decisions.jsonl"))}}
 
 
 def test_good_manifest_is_deployable(policy, evidence):
@@ -144,7 +144,7 @@ def test_publish_needs_an_approval_log(policy, evidence):
 def test_gtm_crm_writes_need_enrichment_guard(policy, evidence):
     res = check(make(**evidence, actions=["crm_update", "send_single"]), policy)
     assert res["verdict"] == "BLOCKED" and any("enrichment_guard" in m for m in failing(res))
-    ok = check(make(**evidence, actions=["crm_update", "send_single"], guards=GOOD["guards"] + ["enrichment_guard"]), policy)
+    ok = check(make(**evidence, actions=["crm_update", "send_single"], guards=GOOD["guards"] + ["enrichment_guard", "provenance"]), policy)
     assert ok["verdict"] == "DEPLOYABLE", failing(ok)
 
 
@@ -199,7 +199,8 @@ class TestJudges:
         sub = tmp_path / "repo"; sub.mkdir()
         (sub / "g.jsonl").write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
         write_labels(15, 15).rename(sub / "l.csv")
-        m = make(golden_set="g.jsonl", judges=[{"template": "swap_test", "labels": "l.csv",
+        clean_log(sub / "d.jsonl")
+        m = make(golden_set="g.jsonl", rollout={"log": "d.jsonl"}, judges=[{"template": "swap_test", "labels": "l.csv",
                                                 "calibration": {"labelled_cases": 30, "agreement": 0.9, "runs": 3, "run_disagreement": 0.0, "net": 0.85}}])
         assert check(bind(m, sub), policy, base_dir=sub)["verdict"] == "DEPLOYABLE"
 

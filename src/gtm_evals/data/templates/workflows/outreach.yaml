@@ -4,7 +4,7 @@ owner: ""                       # who answers for this workflow
 lane: gtm_engineering           # content_ops | ai_seo | gtm_engineering | marketing_automation
 status: pilot
 actions: [score_lead, crm_update, send_single, send_bulk]
-guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, enrichment_guard, dpdp_guard]
+guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, enrichment_guard, dpdp_guard, output_guard, provenance]
 judges:
   - template: personalisation_factuality
     calibration: {labelled_cases: 0, agreement: 0}

@@ -125,7 +125,7 @@ class TestImpactRatio:
 
 def proxy_manifest(**kw):
     m = {"name": "wf", "lane": "gtm_engineering", "actions": ["draft"], "kill_switch": "flag",
-         "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard", "dpdp_guard"],
+         "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard", "dpdp_guard", "output_guard"],
          "logging": {"gate_log": "x", "retention_days": 400}, "token_budget": 1, "owner": "A",
          "scoring_features": ["category", "pincode"]}
     m.update(kw)

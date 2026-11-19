@@ -190,3 +190,20 @@ def bind(manifest, base=None):
         j.setdefault("calibration", {}).update(evidence_binding(j["template"], lp if lp and Path(lp).exists() else None,
                                                                 j.get("model")))
     return manifest
+
+
+def clean_log(path, days=28, per_day=30, start="2026-10-01", **row):
+    """A decision log with `days` clean days of `per_day` items each: enough to earn every default stage."""
+    import json as _json
+    from datetime import date as _date
+    from datetime import timedelta as _td
+    d0 = _date.fromisoformat(start)
+    base = {"sent": True, "guard_passed": True, "replied": False, "cost_usd": 0.02, "latency_s": 30}
+    base.update(row)
+    lines = []
+    for d in range(days):
+        for i in range(per_day):
+            lines.append(_json.dumps(dict(base, ts=f"{(d0 + _td(days=d)).isoformat()}T10:{i:02d}:00+05:30",
+                                          replied=i < 3 if "replied" not in row else row["replied"])))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path

@@ -20,12 +20,16 @@ from . import (  # noqa: F401
     evidence,
     fairness,
     injection_guard,
+    isolation,
     likeness_guard,
     manipulation_guard,
     outreach_guard,
+    output_guard,
     pii_guard,
     promise_guard,
+    provenance,
     redteam,
+    rollout,
     testimonial_guard,
     visibility_stats,
 )
@@ -37,11 +41,12 @@ __version__ = "0.1.1"
 GUARDS = {
     "claims": claims_gate, "promise": promise_guard, "pii": pii_guard, "injection": injection_guard,
     "outreach": outreach_guard, "automation": automation_guard, "manipulation": manipulation_guard,
-    "claim_safety": claim_safety_guard, "dpdp": dpdp_guard, "testimonial": testimonial_guard, "likeness": likeness_guard, "dark_pattern": dark_pattern_guard, "enrichment": enrichment_guard, "ai_seo": ai_seo_guard,
+    "claim_safety": claim_safety_guard, "dpdp": dpdp_guard, "testimonial": testimonial_guard, "likeness": likeness_guard, "dark_pattern": dark_pattern_guard, "output": output_guard, "enrichment": enrichment_guard, "ai_seo": ai_seo_guard,
 }
 
 __all__ = ["ActionGate", "Verdict", "combine", "load_policy", "list_profiles", "GUARDS", "__version__",
            "claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
            "automation_guard", "manipulation_guard", "visibility_stats",
            "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard",
-           "testimonial_guard", "likeness_guard", "dark_pattern_guard", "evidence", "fairness", "redteam"]
+           "testimonial_guard", "likeness_guard", "dark_pattern_guard", "evidence", "fairness", "redteam",
+           "output_guard", "provenance", "isolation", "rollout"]

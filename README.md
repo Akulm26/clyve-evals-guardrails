@@ -112,6 +112,10 @@ Does an LLM write or send anything a customer, prospect or the public will see?
 | writes the same claim or pressure in Hinglish or Hindi | "sardi ka ilaaj", "sirf 2 slot bache", "result pakka", "इलाज" | `claim_safety_guard`, `manipulation_guard`, `promise_guard` |
 | cold-DMs on Instagram, or lets the WhatsApp bot act as a general assistant | a first DM to someone who never messaged you; "write my essay" answered | `outreach_guard`, `automation_guard.check_reply` |
 | scores leads on something that stands in for caste or religion | `scoring_features: [pincode]` with no fairness test | the deployment gate (proxies) |
+| sends "Hi {{first_name}}", greets the wrong person, or links somewhere it made up | "Hi Priya" to Rhea; a bit.ly link | `output_guard` |
+| writes "Series A" to the CRM from a page that says "seed", or cites a page it never opened | | `provenance` |
+| lets one client's data surface in another's output | a vector search with no client filter | `isolation` |
+| goes to 100% of the list on offline tests alone | `send_bulk` with no live log | the deployment gate (rollout: shadow → canary → segment) |
 | builds a checkout that tricks people | a pre-ticked ₹49 gift wrap; "No thanks, I don't like saving money"; a fee that appears at the last step | `dark_pattern_guard` |
 
 ## Concrete examples
@@ -363,8 +367,8 @@ Each manifest names its **lane**, and every lane has guards it must wire in, or 
 
 | Lane | Required guards | Also checked |
 |---|---|---|
-| `marketing_automation` | automation_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard | bot replies disclose they're automated and reach a human |
-| `gtm_engineering` | outreach_guard · promise_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard | CRM writes go through enrichment_guard |
+| `marketing_automation` | automation_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard · output_guard | bot replies disclose they're automated and reach a human |
+| `gtm_engineering` | outreach_guard · promise_guard · pii_guard · injection_guard · manipulation_guard · dpdp_guard · output_guard | CRM writes go through enrichment_guard and provenance |
 | `content_ops` | claims_gate · promise_guard · manipulation_guard · claim_safety_guard · pii_guard · injection_guard · testimonial_guard · likeness_guard · dark_pattern_guard | every publish has a recorded approval and a preview |
 | `ai_seo` (was `ai_visibility`) | ai_seo_guard · visibility_stats · promise_guard | reports can't promise citations or rankings |
 
@@ -452,10 +456,14 @@ Every guard returns a `Verdict`: truthy when it passes, with `.violations` and `
 | `testimonial_guard` | every quoted testimonial matches a registered, consented, sourced entry word for word (reworded quotes escalate); no AI-written or undisclosed insider reviews; social-proof counters and star ratings need a live source (ASCI; FTC 16 CFR 465) |
 | `likeness_guard` | real faces and voices need a consent record that covers the use and hasn't expired; synthetic image, video and audio need a visible AI label (audio: at the start); synthetic people can't pose as customers (MeitY 2026 rules; ASCI AI-ad guidelines) |
 | `dark_pattern_guard` | checkout and flow specs against India's 2023 dark-pattern guidelines: pre-selected add-ons, fake countdowns, confirm-shaming, drip pricing, disguised ads, nagging, trick questions, forced actions, subscription traps |
+| `output_guard` | the last look before sending: unfilled placeholders (`{{first_name}}`, `*|FNAME|*`), a greeting that doesn't match the CRM name, links off the allowlist, raw HTML in plain-text channels, script markup |
+| `provenance` | `check_record()`: each enriched value appears in its saved source page (contradictions named); `check_trace()`: each claim in a research note cites a page a lookup in the trace actually fetched |
+| `isolation` | `check_retrieval()` (client filter on every lookup), `check_memory()` (agent-written notes are untrusted data), `check_tools()` (no tool scope above what the actions need) |
+| `rollout` | `status()`: shadow → canary → segment from the decision log, with breach rules; `budget_status()`: cost per item and p95 latency, WhatsApp priced by category |
 | `fairness` | `impact_ratio()`: the four-fifths test for a feature that could stand in for a protected group |
 | `redteam` | a promptfoo red-team config generated from the policy (prompt extraction, indirect injection, competitors, excessive agency, hijacking, PII, policy rules), and `score()` for its results, with a canary for system-prompt leaks |
 | `evidence` | `required_cases()` (Cochran, from the claimed rate and margin), `strata_shortfall()`, `cohen_kappa()`, `agreement()` for two labellers |
-| `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget |
+| `ActionGate` | R0–R3 risk tiers, required evidence per tier, kill switch, token budget, circuit breaker (stops when guards fail on > 20% of the last 50 items) |
 | `gate` | the deployment gate above |
 | `judges` | 6 LLM-judge templates: swap test, on-thesis, personalisation factuality, claim safety, description accuracy, promise check. `calibrate()` scores right +1, "can't tell" 0, wrong −1, runs each row 3 times and caches results by template, row and model. `packet()` writes only what the judge may see; `evidence_binding()` records the template, labels and model a calibration was measured on |
 
@@ -558,6 +566,7 @@ The `docs/` folder is the thinking behind the code:
 12-deployment-gate.md     deployable / safe / ethical
 13-judge-calibration.md   labelling sheet → agreement → manifest
 14-related-work.md        9 outside GTM evals, benchmarks and skill packs, and what to adopt
+15-rollout.md             shadow → canary → segment from the decision log; budgets
 ```
 
 ## Repo layout

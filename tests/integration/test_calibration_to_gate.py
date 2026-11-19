@@ -1,7 +1,7 @@
 """The evidence loop end to end: label sheet → calibrate --update → manifest → gate verdict."""
 import json
 
-from tests.conftest import real_golden_rows
+from tests.conftest import clean_log, real_golden_rows
 
 import shutil
 
@@ -18,6 +18,8 @@ def setup_repo(root, tmp_path, labels_src):
     gs = repo / "evals" / "datasets" / "outreach_messages.jsonl"
     gs.parent.mkdir(parents=True)
     gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
+    (repo / "logs").mkdir()
+    clean_log(repo / "logs" / "decisions.jsonl")
     return repo, wf
 
 

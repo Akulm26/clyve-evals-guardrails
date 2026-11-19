@@ -61,6 +61,37 @@ def cmd_init(a):
           "\n  5. gtm-evals judge labels <judge>           a labelling sheet to calibrate an LLM judge")
 
 
+def cmd_rollout(a):
+    import yaml
+
+    from . import rollout
+    p = _policy(a)
+    m = yaml.safe_load(Path(a.manifest).read_text(encoding="utf-8")) or {}
+    roll = m.get("rollout") or {}
+    if not roll.get("log"):
+        print(f"{NO} {a.manifest} has no rollout.log", file=sys.stderr)
+        return 2
+    base = Path(a.base) if a.base else Path.cwd()
+    log = base / roll["log"]
+    rows = rollout.read_log(log)
+    if not rows:
+        print(f"{NO} no rows in {log}: the workflow hasn't logged any live decisions yet")
+        return 1
+    st = rollout.status(roll, rows, p, m.get("budgets"))
+    print(f"{m.get('name', a.manifest)}: stage {st['stage']} ({' → '.join(st['stages'])}), "
+          f"{st['clean_days']}/{st['days_needed']} clean days" + (" · complete" if st["complete"] else ""))
+    for h in st["history"][-a.last:]:
+        print(f"  {h['day']}  {h['stage']:8} {h['event']:8} {'; '.join(h['why'])}")
+    if m.get("budgets"):
+        b = rollout.budget_status(rows, m["budgets"])
+        cost = f"${b['usd_per_item']:.3f}/item" if b["usd_per_item"] is not None else "no cost logged"
+        lat = f"p95 {b['p95_seconds']:.0f}s" if b["p95_seconds"] is not None else "no latency logged"
+        print(f"  budgets: {cost} · {lat}" + (f"  {NO} {'; '.join(b['problems'])}" if b["problems"] else f"  {OK}"))
+    want = p["rollout"]["deployable_from_stage"]
+    earned = want in st["stages"] and st["stage_index"] >= st["stages"].index(want)
+    return 0 if earned else 1
+
+
 def cmd_redteam(a):
     import yaml
 
@@ -135,7 +166,9 @@ def cmd_check(a):
     p = _policy(a)
     text = Path(a.file).read_text(encoding="utf-8") if a.file != "-" else sys.stdin.read()
     reg = json.loads(Path(a.register).read_text(encoding="utf-8")) if a.register else None
-    vs = [promise_guard.check(text, p), manipulation_guard.check(text, p), pii_guard.check(text), injection_guard.check(text)]
+    from . import output_guard
+    vs = [promise_guard.check(text, p), manipulation_guard.check(text, p), pii_guard.check(text), injection_guard.check(text),
+          output_guard.check(text, p, {"lead_name": a.lead_name, "channel": a.channel})]
     if reg is not None:
         vs.insert(0, claims_gate.check(text, reg, p))
     if a.category or a.competitor:
@@ -351,6 +384,9 @@ def main(argv=None):
         p.add_argument("--profile", help=f"preset layered under your config: {', '.join(list_profiles())}")
 
     p = sub.add_parser("init", help="scaffold config, a workflow manifest and a golden set"); p.add_argument("dir", nargs="?", default="."); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_init)
+    p = sub.add_parser("rollout", help="which rollout stage the live decision log has earned")
+    p.add_argument("action", choices=["status"]); p.add_argument("manifest"); p.add_argument("--base", help="resolve the log path from here")
+    p.add_argument("--last", type=int, default=10, help="show this many history events"); common(p); p.set_defaults(fn=cmd_rollout)
     p = sub.add_parser("redteam", help="promptfoo red-team config from the policy, and scoring its results")
     p.add_argument("action", choices=["init", "score"]); p.add_argument("path", help="init: a workflow manifest · score: promptfoo results.json")
     p.add_argument("-o", "--out"); p.add_argument("--canary"); p.add_argument("--manifest", help="score: read the canary from here")
@@ -359,7 +395,9 @@ def main(argv=None):
     p = sub.add_parser("eval", help="score guards on golden sets"); p.add_argument("golden", nargs="+"); common(p); p.set_defaults(fn=cmd_eval)
     p = sub.add_parser("check", help="run text guards on a draft ('-' for stdin)"); p.add_argument("file"); p.add_argument("--register", help="claims register JSON"); p.add_argument("--json", action="store_true")
     p.add_argument("--category", help="product category, e.g. food or skincare: adds the regulated-claims check")
-    p.add_argument("--competitor", action="append", help="a competitor's name; naming one needs proof"); common(p); p.set_defaults(fn=cmd_check)
+    p.add_argument("--competitor", action="append", help="a competitor's name; naming one needs proof")
+    p.add_argument("--lead-name", help="the CRM name: a greeting to anyone else is flagged")
+    p.add_argument("--channel", help="e.g. whatsapp or sms: raw HTML is flagged in plain-text channels"); common(p); p.set_defaults(fn=cmd_check)
     p = sub.add_parser("seo", help="AI SEO: crawler access, readable without JS, schema, entity consistency")
     p.add_argument("page", nargs="?", help="a saved HTML page (as served, before JavaScript)"); p.add_argument("--robots", help="the site's robots.txt")
     p.add_argument("--path", default="/", help="URL path checked against robots.txt (default /)")

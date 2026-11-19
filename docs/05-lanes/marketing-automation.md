@@ -44,3 +44,6 @@ Automation failures are **volume failures**. One wrong condition doesn't make on
 | The WhatsApp reply bot answers "write my essay" like a general assistant | `automation_guard.check_reply(..., context={"channel": "whatsapp"})`: off-scope requests must get `decline` or `escalate` |
 | "Sirf 2 slot bache", "aakhri mauka" slip past English-only patterns | `manipulation_guard` (Hinglish and Devanagari) |
 | A bot that replies to people ships without being attacked first | the gate needs promptfoo red-team results (`gtm-evals redteam init`), and blocks on a leaked canary |
+| A flow goes live to the whole list on offline tests alone | `rollout:` stages; `activate_flow` needs the log to earn `segment` ([docs/15](../15-rollout.md)) |
+| The reply bot keeps going while its guards fail on every third message | `ActionGate` circuit breaker |
+| One brand's customer history shows up in another brand's replies | `isolation.check_retrieval()`; `retrieval: {client_filter: tenant_id}` in the manifest |

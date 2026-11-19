@@ -14,14 +14,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import redteam
+from . import isolation, redteam, rollout
 from .action_gate import ActionGate
 from .evidence import agreement, required_cases, strata_shortfall
 
 GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
                "automation_guard", "manipulation_guard", "visibility_stats", "action_gate",
                "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard",
-               "testimonial_guard", "likeness_guard", "dark_pattern_guard"}
+               "testimonial_guard", "likeness_guard", "dark_pattern_guard", "output_guard", "provenance"}
 _BASE = [Path.cwd()]
 
 
@@ -69,6 +69,26 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
         safe.append((bool(manifest.get("approval_log")), "every publish has a recorded approval (approval_log)"))
     if any(a in actions for a in ("crm_update", "client_crm_bulk_write")) and lane == "gtm_engineering":
         safe.append(("enrichment_guard" in guards, "CRM writes go through enrichment_guard (sourced, dated, allowed fields)"))
+        safe.append(("provenance" in guards, "enriched values are checked against their saved source pages (provenance)"))
+    if manifest.get("trace_required_for"):
+        safe.append(("provenance" in guards, f"claims in {manifest['trace_required_for']} are checked against the tool trace"))
+    if manifest.get("tools"):
+        iso = isolation.check_tools(manifest["tools"], actions, policy)
+        safe.append((iso.passed, "tools hold only the scopes the actions need (least privilege)"
+                     + (f" ({'; '.join(iso.violations)})" if iso.violations else "")))
+    if manifest.get("retrieval") is not None:
+        safe.append((bool((manifest["retrieval"] or {}).get("client_filter")), "every retrieval filters on the client (no cross-client data)"))
+    mem = manifest.get("memory")
+    if mem and mem.get("agent_writes"):
+        safe.append((bool(mem.get("treated_as_untrusted")), "memory the agent writes is read back as untrusted data"))
+    roll = manifest.get("rollout") or {}
+    log_rows = None
+    if roll.get("log"):
+        lp = next((b / roll["log"] for b in _BASE if (b / roll["log"]).exists()), None)
+        log_rows = rollout.read_log(lp) if lp else None
+    if manifest.get("budgets") and log_rows:
+        b = rollout.budget_status(log_rows, manifest["budgets"])
+        safe.append((not b["problems"], "logged cost and latency within budget" + (f" ({'; '.join(b['problems'])})" if b["problems"] else "")))
 
     if redteam.needed(manifest, policy):
         rt = manifest.get("redteam") or {}
@@ -172,6 +192,15 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
             deploy.append((kappa is not None and kappa >= ev["min_kappa"],
                            f"judge '{j.get('template')}' labels agreed by two labellers (κ ≥ {ev['min_kappa']:.2f}"
                            + (f", has {kappa:.2f})" if kappa is not None else ", no second labeller)")))
+    rc_ = policy["rollout"]
+    if any(a in actions for a in rc_["required_for_actions"]):
+        if log_rows is None:
+            deploy.append((False, "live rollout log attached (rollout: {log, stages}); offline cases alone can't make it DEPLOYABLE"))
+        else:
+            st = rollout.status(roll, log_rows, policy, manifest.get("budgets"))
+            want = st["stages"].index(rc_["deployable_from_stage"]) if rc_["deployable_from_stage"] in st["stages"] else len(st["stages"]) - 1
+            deploy.append((st["stage_index"] >= want, f"live rollout has earned '{st['stages'][want]}' (now: {st['stage']}, "
+                                                      f"{st['clean_days']}/{st['days_needed']} clean days)"))
     if redteam.needed(manifest, policy):
         rt = manifest.get("redteam") or {}
         rc = policy["redteam"]

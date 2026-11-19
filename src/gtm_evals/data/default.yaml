@@ -200,9 +200,11 @@ action_gate:
     activate_flow: R3
     publish: R3
     client_crm_bulk_write: R3
+  scope_tiers: {read: R0, draft: R0, write: R1, send: R2, bulk_send: R3, publish: R3, delete: R3, admin: R3, billing: R3}
   kill_switch_env: "GTM_EVALS_KILL_SWITCH"
   max_regenerations: 2
   max_tokens_per_run: 200000
+  circuit_breaker: {window: 50, max_fail_rate: 0.20, min_items: 10}   # stop when guards fail on >20% of the last 50
 
 ai_seo:   # technical AI SEO (ContentOS E1/E2). Crawler names change: check each vendor's crawler docs.
   # Must be allowed, or the brand can't appear in that assistant's search answers / live fetches.
@@ -255,6 +257,37 @@ manipulation:   # ethics: escalated for a human to verify, never auto-sent
     - "जल्दी\\s*(करें|करो|कीजिए)"
     - "पछताओगे|पछताएंगे"
 
+output:   # output_guard: the last look before anything is sent (OWASP LLM05)
+  unfilled_patterns:
+    - "\\{\\{\\s*[\\w.]+\\s*\\}\\}"          # {{first_name}}
+    - "\\{\\s*(first_?name|last_?name|name|company|city)\\s*\\}"
+    - "\\*\\|[A-Z_]+\\|\\*"                    # *|FNAME|*
+    - "%[A-Z_]{3,}%"                        # %FIRSTNAME%
+    - "\\[(first name|name|company|insert[^\\]]*)\\]"
+  generic_greetings: [there, team, all, everyone, friend, folks, sir, madam, ji]
+  link_allowlist: []                        # set per workflow: context["link_allowlist"] or here
+  plain_text_channels: [sms, whatsapp, instagram_dm, inmail, linkedin_dm]
+  html_pattern: "<\\s*/?\\s*(div|span|p|br|table|a|img|html|body|b|i|strong)\\b[^>]*>"
+  script_pattern: "<\\s*script\\b|\\bon(load|error|click)\\s*=|javascript:"
+
+provenance:   # #3 + #12: a fact is in the page it cites, and the agent actually looked
+  require_saved_page: true
+  partial_overlap: 0.6                      # partly found → escalate rather than block
+  lookup_tools: [web_fetch, fetch, browse, search, crm_lookup, scrape]
+  vocabularies:                             # values that contradict each other within one page
+    funding_stage: [pre-seed, seed, series a, series b, series c, series d, ipo, bootstrapped]
+    company_size: [1-10, 11-50, 51-200, 201-500, 501-1000, 1000+]
+
+rollout:   # shadow → canary → segment from the decision log (gtm_evals.rollout)
+  required_for_actions: [send_bulk, activate_flow, client_crm_bulk_write]
+  deployable_from_stage: segment            # DEPLOYABLE needs the log to have earned this stage
+  min_items_per_day: 20                     # thinner days neither count nor breach
+  default_stages:
+    - {name: shadow, share: 0.00, days: 7}
+    - {name: canary, share: 0.05, days: 7}
+    - {name: segment, share: 0.25, days: 14}
+  default_guard_metrics: {unsubscribe_rate_max: 0.01, complaint_rate_max: 0.001, guard_fail_rate_max: 0.05}
+
 redteam:   # gtm_evals.redteam: a promptfoo config from the policy; results are gate evidence
   actions: [reply_single]   # workflows with these (or automated_replies) need a red team
   plugins: [prompt-extraction, indirect-prompt-injection, competitors, excessive-agency, hijacking, pii, imitation]
@@ -284,8 +317,8 @@ deployment_gate:
   lanes:                     # guards every workflow in a lane must wire in
     content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard, testimonial_guard, likeness_guard, dark_pattern_guard]
     ai_seo:               [ai_seo_guard, visibility_stats, promise_guard]
-    gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]
-    marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]
+    gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard, output_guard]
+    marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard, output_guard]
   lane_aliases: {ai_visibility: ai_seo}   # old name, still accepted
   min_real_golden_cases: 30  # needed before 'deployed'; fewer = pilot only
   judge_min_labels: 30

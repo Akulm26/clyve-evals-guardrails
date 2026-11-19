@@ -2,7 +2,23 @@
 
 ## Unreleased (0.2.0)
 
-Phases 0 to 3 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+Phases 0 to 4 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+
+### Phase 4 · Agent safety + live proof
+
+Guardrails
+- **Provenance.** `provenance.check_record()`: each enriched value must appear in its saved source page. A contradiction is named ("source says 'seed', record says 'Series A'"); a partial match escalates. CRM writes in `gtm_engineering` now need `provenance` as well as `enrichment_guard`.
+- **Tool use.** `provenance.check_trace()`: each claim in a research note must cite a page that a lookup in the agent's trace fetched. Manifests with `trace_required_for` need `provenance`.
+- **`output_guard` (new).** Unfilled placeholders, a greeting that doesn't match the CRM name, links off the allowlist, raw HTML in plain-text channels, script markup. Required in `gtm_engineering` and `marketing_automation`; `gtm-evals check --lead-name --channel` runs it.
+- **Isolation (new module).** Every retrieval filters on the client; memory an agent wrote is read back as untrusted; tools hold only the scopes the actions need (`action_gate.scope_tiers`). The gate checks `retrieval`, `memory` and `tools` when a manifest declares them.
+- **Circuit breaker.** `ActionGate.record()` / `breaker_open()`: when guards fail on more than 20% of the last 50 items, every action above R0 stops.
+
+Evals
+- **As-of replay.** A golden row with `as_of` is run as it stood that day: later-dated signals and fields are hidden and `today` becomes `as_of`.
+- **Shadow → canary → segment.** `rollout:` in the manifest plus a decision log. Clean days advance a stage; a breach (unsubscribes, complaints, guard failures, kill switch, budget) drops back to shadow. Workflows with `send_bulk`, `activate_flow` or `client_crm_bulk_write` need the log to have earned `segment` before they're DEPLOYABLE. `gtm-evals rollout status`. See docs/15-rollout.md.
+- **Budgets.** `budgets: {usd_per_item, p95_seconds, whatsapp_rates}` checked against the log; a breach blocks.
+- Clyve's teardown manifest now declares `rollout` and `budgets` (still PILOT ONLY: no live log yet).
+- 12 golden cases (p4-01 to p4-12); 111 in `evals/lanes.jsonl`.
 
 ### Phase 3 · Coverage + test honesty
 
