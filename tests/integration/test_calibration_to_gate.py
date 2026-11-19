@@ -1,4 +1,8 @@
 """The evidence loop end to end: label sheet → calibrate --update → manifest → gate verdict."""
+import json
+
+from tests.conftest import real_golden_rows
+
 import shutil
 
 import yaml
@@ -13,7 +17,7 @@ def setup_repo(root, tmp_path, labels_src):
     shutil.copy(labels_src, repo / "evals" / "labels" / "personalisation_factuality.csv")
     gs = repo / "evals" / "datasets" / "outreach_messages.jsonl"
     gs.parent.mkdir(parents=True)
-    gs.write_text("\n".join('{"source": "real"}' for _ in range(30)), encoding="utf-8")
+    gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
     return repo, wf
 
 

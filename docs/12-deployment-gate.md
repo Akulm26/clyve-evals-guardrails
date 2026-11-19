@@ -11,7 +11,7 @@ Any SAFE or ETHICAL test fails? ──YES──▶ BLOCKED      do not run it
         │ NO
         ▼
 Is the evidence real?
-(≥30 real golden cases, every judge calibrated) ──NO──▶ PILOT ONLY   run with a human checking every R2+ action
+(enough real cases for the claim, every judge calibrated on two-labeller data) ──NO──▶ PILOT ONLY   run with a human checking every R2+ action
         │ YES
         ▼
     DEPLOYABLE   run it; the guards and the action gate stay on every output
@@ -23,7 +23,7 @@ Is the evidence real?
 |---|---|---|
 | **Safe** | Can it do damage at scale? | Every action has a risk tier · the lane's guards are wired in · kill switch · named approver + canary for R3 · gate log kept ≥ 90 days · token budget |
 | **Ethical** | Is it honest and fair to the people it touches? | Lawful basis + consent checked at send (DPDP) · only permitted personal data · opt-outs within 48 h · **no protected attribute used to score or target people** · automated replies say they're automated and always offer a human · no outcome promises · pressure tactics (false urgency, false scarcity) escalated |
-| **Deployable** | Do we have evidence it works? | Golden set with ≥ 30 **real** cases (`"source": "real"`) · every judge calibrated (≥ 30 labels, ≥ 85% agreement; KPI Q3) · named owner |
+| **Deployable** | Do we have evidence it works? | **Real** cases (`"source": "real"`) sized from the manifest's `claims: {precision, margin}` by Cochran's formula (never below 30; 97 when no claim is stated), with a minimum share per `stratum` (standard 40% · ambiguous 35% · adversarial 25%) · every judge calibrated (≥ 30 labels, ≥ 85% agreement; KPI Q3) on labels two people agree on (κ ≥ 0.80) · named owner |
 
 Safe and ethical failures **block**. Missing evidence only limits the workflow to a **pilot**. That's deliberate: a workflow can be safe before it's proven, but it can never be proven while it's unsafe.
 
@@ -57,5 +57,5 @@ automated_replies: {discloses_automation: true, human_escalation_path: "reply HU
 ## Moving a workflow from PILOT ONLY to DEPLOYABLE
 
 1. Log every real rejection, edit and escalation as a golden-set row with `"source": "real"`.
-2. Label 30 real cases for each judge it uses, run `evals/judge.py`, and record the agreement in the manifest.
+2. Label real cases for each judge it uses with a second labeller (`human_verdict_b`), check `gtm-evals judge agreement`, then `gtm-evals judge calibrate … --update <manifest>`.
 3. Re-run the gate. CI runs it on every push and fails the build if any workflow is BLOCKED.

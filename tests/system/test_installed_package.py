@@ -94,7 +94,7 @@ class TestNewUserJourney:
     def test_labelling_sheet_journey(self, gtm, project):
         gtm("judge", "labels", "personalisation_factuality", check_code=0)
         sheet = project / "evals/labels/personalisation_factuality.csv"
-        assert sheet.read_text().splitlines()[0] == "id,text,signals,today,freshness_days,human_verdict,why"
+        assert sheet.read_text().splitlines()[0] == "id,text,signals,today,freshness_days,human_verdict,human_verdict_b,why"
         assert "0/30 labelled" in gtm("judge", "status", "personalisation_factuality", sheet, check_code=1).stdout
         r = gtm("judge", "calibrate", "personalisation_factuality", sheet)
         assert r.returncode == 1 and "agreement 0% on 0" in r.stdout          # no labels: nothing to run, no key needed

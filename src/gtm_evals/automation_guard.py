@@ -35,7 +35,8 @@ def check_send(event: dict, history: list[dict], policy: dict) -> Verdict:
         v.append(f"tenant mismatch: {sorted(map(str, tenants))}")
 
     # Consent at send time, from source of truth
-    if not contact.get("consent", {}).get(channel):
+    c = contact.get("consent", {}).get(channel)
+    if not (c.get("granted") if isinstance(c, dict) else c):
         v.append(f"no current {channel} consent")
     if channel == "whatsapp" and not event.get("template_approved"):
         v.append("WhatsApp template not approved")
@@ -64,12 +65,59 @@ def check_send(event: dict, history: list[dict], policy: dict) -> Verdict:
     if is_promo and _in_quiet_hours(ts, _t(q["start"]), _t(q["end"])):
         v.append(f"promotional send in quiet hours ({q['start']}–{q['end']} IST)")
 
+    v += _trai(event, contact, channel, ts, is_promo, policy)
+
     # Audience sanity (null filter / broken segment)
     last = event.get("last_audience_size")
     if last and event.get("audience_size", 0) > cfg["max_audience_growth_factor"] * last:
         v.append(f"audience jumped {event['audience_size']} vs last {last} — likely broken filter")
 
     return Verdict.from_violations("automation_guard", v)
+
+
+def _when(x) -> datetime | None:
+    if isinstance(x, dict):
+        x = x.get("at")
+    return datetime.fromisoformat(str(x)[:16]) if x else None
+
+
+def _trai(event: dict, contact: dict, channel: str, ts: datetime, is_promo: bool, policy: dict) -> list[str]:
+    """TRAI commercial-communication rules (TCCCPR as amended Feb 2025) for SMS and voice.
+
+    contact["consent"][channel] may be True or {"granted": True, "at": ts, "source": "explicit" | "transaction"}
+    contact["opt_outs"] = {channel: ts}            last opt-out
+    event["is_consent_request"] = True             this send asks the contact to opt in again
+    event["header"] = "AX-BRANDX-P"                 sender header; its suffix must match the message category
+    event["dlt_template_id"], event["dlt_template_category"]   registered DLT template for this send
+    """
+    cfg = policy.get("trai", {})
+    if channel not in cfg.get("channels", []):
+        return []
+    v = []
+    category = "promotional" if is_promo else ((event.get("type") or "").lower() or "service")
+    category = cfg.get("category_aliases", {}).get(category, category)
+
+    out = _when((contact.get("opt_outs") or {}).get(channel))
+    if out and event.get("is_consent_request") and ts - out < timedelta(days=cfg["reconsent_lock_days"]):
+        v.append(f"asks for consent again {(ts - out).days} days after an opt-out "
+                 f"(TRAI: not within {cfg['reconsent_lock_days']} days)")
+    c = (contact.get("consent") or {}).get(channel)
+    if isinstance(c, dict) and c.get("source") == "transaction" and is_promo:
+        at = _when(c)
+        if at and ts - at > timedelta(days=cfg["transaction_consent_days"]):
+            v.append(f"consent taken during a transaction is {(ts - at).days} days old "
+                     f"(TRAI: valid {cfg['transaction_consent_days']} days)")
+
+    if channel in cfg.get("dlt_channels", []):
+        if not event.get("dlt_template_id"):
+            v.append("no DLT template ID: SMS content must use a registered template")
+        elif event.get("dlt_template_category") and event["dlt_template_category"].lower() != category:
+            v.append(f"DLT template is registered as '{event['dlt_template_category']}' but this message is {category}")
+        header = event.get("header") or ""
+        want = cfg.get("header_suffix", {}).get(category)
+        if header and want and not header.upper().endswith(f"-{want}"):
+            v.append(f"header '{header}' doesn't carry the -{want} suffix for {category} messages")
+    return v
 
 
 def check_reply(proposed: dict, inbound_text: str, policy: dict) -> Verdict:

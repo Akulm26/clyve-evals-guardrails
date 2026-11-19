@@ -7,7 +7,7 @@
                                          --category food adds the regulated-claims check
     gtm-evals seo page.html              AI SEO: crawler access, readable without JS, schema, entity consistency
     gtm-evals visibility runs.jsonl      did AI visibility really move? (noise + chance bands)
-    gtm-evals judge list|render|labels|status|calibrate
+    gtm-evals judge list|render|labels|status|agreement|calibrate
     gtm-evals policy --show              print the effective policy
 """
 from __future__ import annotations
@@ -211,6 +211,21 @@ def cmd_judge(a):
         print("Open it in any spreadsheet, fill one real case per row, set human_verdict to pass or fail, "
               f"then: gtm-evals judge calibrate {a.template} {out}")
         return 0
+    if a.action == "agreement":
+        from .evidence import agreement as two_labellers
+        if not a.dataset:
+            print(f"{NO} agreement needs a label file: gtm-evals judge agreement {a.template} labels.csv", file=sys.stderr)
+            return 2
+        r = two_labellers(load_rows(a.dataset))
+        if not r["second_labeller"]:
+            print(f"{NO} no second labeller yet: fill the human_verdict_b column without looking at human_verdict")
+            return 1
+        need = load_policy()["evidence"]["min_kappa"]
+        print(f"{OK if r['kappa'] >= need else NO} κ {r['kappa']:.2f} on {r['both_labelled']} rows both labelled "
+              f"(need ≥ {need:.2f}); they agree on {len(r['agreed'])}")
+        for i in r["disagree"]:
+            print(f"  disagree  {i}: settle it with a third person, or drop the row")
+        return 0 if r["kappa"] >= need else 1
     if a.action == "status":
         if not a.dataset:
             print(f"{NO} status needs a label file: gtm-evals judge status {a.template} labels.csv", file=sys.stderr)
@@ -235,11 +250,14 @@ def cmd_judge(a):
             print(f"{NO} {e}", file=sys.stderr)
             return 2
         print(f"agreement {res['agreement']:.0%} on {res['labelled_cases']} labelled cases (gate: ≥85% on ≥30)")
+        if "kappa" in res:
+            print(f"two labellers: κ {res['kappa']:.2f}; {len(res['disagree'])} rows they disagree on were left out")
         for rid, got, want in res["results"]:
             if got != want:
                 print(f"  disagree  {rid}: judge {got}, human {want}")
         if a.update:
-            ok = judges.update_manifest(a.update, Path(a.template).stem, res["labelled_cases"], res["agreement"])
+            ok = judges.update_manifest(a.update, Path(a.template).stem, res["labelled_cases"], res["agreement"],
+                                        res.get("kappa"))
             print(f"{'updated' if ok else 'no judge entry for this template in'} {a.update}")
         return 0 if res["labelled_cases"] >= 30 and res["agreement"] >= 0.85 else 1
 
@@ -276,7 +294,7 @@ def main(argv=None):
     p.add_argument("--entity", help='JSON: {"canonical": {...}, "profiles": {channel: {name, description}}}')
     p.add_argument("--json", action="store_true"); common(p); p.set_defaults(fn=cmd_seo)
     p = sub.add_parser("visibility", help="did AI visibility really move?"); p.add_argument("runs"); p.add_argument("--before", default="day0"); p.add_argument("--after", default="day30"); p.add_argument("--engine"); common(p); p.set_defaults(fn=cmd_visibility)
-    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
+    p = sub.add_parser("judge", help="LLM judge templates"); p.add_argument("action", choices=["list", "render", "labels", "status", "agreement", "calibrate"]); p.add_argument("template", nargs="?"); p.add_argument("dataset", nargs="?")
     p.add_argument("--rows", type=int, default=30, help="labels: number of blank rows"); p.add_argument("--force", action="store_true")
     p.add_argument("--update", metavar="MANIFEST", help="calibrate: write the result into this workflow manifest")
     p.add_argument("--var", dest="vars", action="append", help="key=value"); p.add_argument("--var-file", action="append", help="key=path (file contents become the value)"); p.add_argument("--model"); p.set_defaults(fn=cmd_judge)
@@ -284,7 +302,7 @@ def main(argv=None):
 
     a = ap.parse_args(argv)
     if a.cmd == "judge" and a.action != "list" and not a.template:
-        ap.error("judge render/labels/status/calibrate needs a template name (see: gtm-evals judge list)")
+        ap.error("judge render/labels/status/agreement/calibrate needs a template name (see: gtm-evals judge list)")
     sys.exit(a.fn(a) or 0)
 
 

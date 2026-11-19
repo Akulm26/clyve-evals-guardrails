@@ -10,6 +10,7 @@ judges:
     calibration: {labelled_cases: 0, agreement: 0}     # Q3 not done yet
   - template: on_thesis
     calibration: {labelled_cases: 0, agreement: 0}
+claims: {precision: 0.90, margin: 0.10}   # what this workflow claims; the gate sizes the proof from it (35 real cases)
 golden_set: evals/datasets/content_drafts.jsonl
 human_approver: Akul
 approval_log: logs/approvals.jsonl          # every publish records who approved which draft

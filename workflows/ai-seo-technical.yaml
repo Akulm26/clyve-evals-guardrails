@@ -6,6 +6,7 @@ lane: ai_seo
 status: pilot
 actions: [recon_note, report_draft]
 guards: [ai_seo_guard, visibility_stats, promise_guard, claims_gate]
+claims: {precision: 0.90, margin: 0.10}   # what this workflow claims; the gate sizes the proof from it (35 real cases)
 golden_set: evals/lanes.jsonl
 kill_switch: CLYVE_KILL_SWITCH
 token_budget: 50000

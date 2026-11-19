@@ -1,6 +1,6 @@
 # 13 · Calibrating a judge with a labelling sheet
 
-An LLM judge is only evidence once you know how often it agrees with a careful human on **your** cases. That agreement rate is KPI Q3, and the deployment gate needs **≥ 30 labelled cases at ≥ 85% agreement** before a workflow that relies on the judge can be DEPLOYABLE.
+An LLM judge is only evidence once you know how often it agrees with a careful human on **your** cases. That agreement rate is KPI Q3, and the deployment gate needs **≥ 30 labelled cases at ≥ 85% agreement** before a workflow that relies on the judge can be DEPLOYABLE. Those labels must come from **two people labelling independently** who agree well (Cohen's κ ≥ 0.80), and only the rows they agree on count.
 
 ```text
  real messages you sent ──► labelling sheet ──► CSV in evals/labels/ ──► gtm-evals judge calibrate
@@ -47,6 +47,18 @@ Columns for `personalisation_factuality`:
 gtm-evals judge status personalisation_factuality evals/labels/personalisation_factuality.csv
 # 12/30 labelled · 9 pass · 3 fail · not ready (need 30, with ≥10 pass and ≥10 fail)
 ```
+
+## 2b. A second labeller
+
+A second person fills `human_verdict_b` for the same rows **without looking at `human_verdict`**. Then:
+
+```bash
+gtm-evals judge agreement personalisation_factuality evals/labels/personalisation_factuality.csv
+# ✅ κ 0.86 on 34 rows both labelled (need ≥ 0.80); they agree on 32
+#   disagree  L07: settle it with a third person, or drop the row
+```
+
+Rows the two disagree on are left out of calibration. Settle them with a third person if they matter, or drop them. A κ below 0.80 usually means the rule is unclear: tighten the "how to label" rules and relabel, rather than averaging the disagreement away.
 
 ## 3. Calibrate
 

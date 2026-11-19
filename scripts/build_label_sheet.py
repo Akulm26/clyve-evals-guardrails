@@ -10,16 +10,18 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 OUT = Path(__file__).resolve().parents[1] / "docs" / "templates" / "judge-labelling-sheet.xlsx"
-COLS = ["id", "text", "signals", "human_verdict", "why", "lead", "date_sent", "today", "freshness_days"]
-WIDTHS = {"A": 8, "B": 60, "C": 50, "D": 16, "E": 36, "F": 20, "G": 13, "H": 13, "I": 15}
+COLS = ["id", "text", "signals", "human_verdict", "human_verdict_b", "why", "lead", "date_sent", "today", "freshness_days"]
+WIDTHS = {"A": 8, "B": 60, "C": 50, "D": 16, "E": 16, "F": 36, "G": 20, "H": 13, "I": 13, "J": 15}
 GUIDE = [
     ("Progress", None),
     ("Labelled", '=COUNTIF(Labels!D2:D1000,"pass")+COUNTIF(Labels!D2:D1000,"fail")'),
+    ("Second labeller", '=COUNTIF(Labels!E2:E1000,"pass")+COUNTIF(Labels!E2:E1000,"fail")'),
+    ("Both agree", '=SUMPRODUCT((Labels!D2:D1000<>"")*(Labels!D2:D1000=Labels!E2:E1000))'),
     ("Target", 30),
     ("pass", '=COUNTIF(Labels!D2:D1000,"pass")'),
     ("fail", '=COUNTIF(Labels!D2:D1000,"fail")'),
-    ("Ready to calibrate?", '=IF(AND(B2>=30,B4>=10,B5>=10),"Yes: save Labels as CSV and calibrate",'
-                            '"Not yet: need 30 labels, at least 10 pass and 10 fail")'),
+    ("Ready to calibrate?", '=IF(AND(B4>=30,B6>=10,B7>=10),"Yes: save Labels as CSV and calibrate",'
+                            '"Not yet: need 30 rows both labellers agree on, at least 10 pass and 10 fail")'),
     (None, None),
     ("What this is for", None),
     ("Each row is one real message you sent. You decide pass or fail by hand; then the "
@@ -31,6 +33,8 @@ GUIDE = [
     ("signals: the facts on file about the recipient, one per line: S1: fact (source URL or screenshot, date).", None),
     ("human_verdict: pass only if every statement about the recipient matches a signal and nothing implies "
      "private data (conversion rate, revenue, CAC, AOV). Stretched, unsupported or stale is fail.", None),
+    ("human_verdict_b: a second person labels the same row without looking at human_verdict. Only rows you "
+     "both agree on are used, and the two of you need Cohen's kappa of 0.80 or more (gtm-evals judge agreement).", None),
     ("why: one line. For a fail, quote the statement that broke it.", None),
     ("today fills itself from date_sent; freshness_days is 45.", None),
     (None, None),
@@ -56,14 +60,14 @@ def main():
         c.fill = PatternFill("solid", fgColor="F3F3F3")
     for i in range(1, 31):
         r = i + 1
-        ws.append([f"L{i:02d}", None, None, None, None, None, None, f'=IF(G{r}="","",G{r})', 45])
-        for col in "GH":
+        ws.append([f"L{i:02d}", None, None, None, None, None, None, None, f'=IF(H{r}="","",H{r})', 45])
+        for col in "HI":
             ws[f"{col}{r}"].number_format = "yyyy-mm-dd"
-        for col in "BCE":
+        for col in "BCF":
             ws[f"{col}{r}"].alignment = Alignment(wrap_text=True, vertical="top")
     dv = DataValidation(type="list", formula1='"pass,fail"', allow_blank=True)
     ws.add_data_validation(dv)
-    dv.add("D2:D1000")
+    dv.add("D2:E1000")
     for col, w in WIDTHS.items():
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "B2"
@@ -71,11 +75,11 @@ def main():
     g = wb.create_sheet("How to label")
     for label, value in GUIDE:
         g.append([label, value])
-    for r in (1, 8, 11, 18, 23):
+    for r in (1, 10, 13, 21, 26):
         g[f"A{r}"].font = Font(bold=True, size=12)
-    for r in range(2, 7):
+    for r in range(2, 9):
         g[f"A{r}"].font = Font(bold=True)
-    for r in range(9, len(GUIDE) + 1):
+    for r in range(11, len(GUIDE) + 1):
         g[f"A{r}"].alignment = Alignment(wrap_text=True, vertical="top")
     g.column_dimensions["A"].width = 100
     g.column_dimensions["B"].width = 48

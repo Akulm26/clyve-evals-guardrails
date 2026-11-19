@@ -268,7 +268,25 @@ class TestJudge:
         code, out, _ = run_cli("judge", "calibrate", "personalisation_factuality", labels, "--update", wf)
         assert code == 0 and "agreement 94% on 32" in out and len(calls) == 32
         assert "disagree  L01: judge fail, human pass" in out and f"updated {wf}" in out
-        assert yaml.safe_load(wf.read_text())["judges"][0]["calibration"] == {"labelled_cases": 32, "agreement": 0.94}
+        assert yaml.safe_load(wf.read_text())["judges"][0]["calibration"] == {"labelled_cases": 32, "agreement": 0.94, "kappa": 1.0}
+
+    def test_agreement(self, run_cli, write_labels):
+        code, out, _ = run_cli("judge", "agreement", "swap_test", write_labels(15, 15, flip_b={"L01"}))
+        assert code == 0 and "κ 0.93 on 30 rows both labelled" in out and "disagree  L01" in out
+
+    def test_agreement_too_low(self, run_cli, write_labels):
+        flips = {f"L{i:02d}" for i in range(1, 6)} | {f"L{i:02d}" for i in range(16, 19)}
+        code, out, _ = run_cli("judge", "agreement", "swap_test", write_labels(15, 15, flip_b=flips))
+        assert code == 1 and "need ≥ 0.80" in out
+
+    def test_agreement_without_second_labeller(self, run_cli, write_labels):
+        code, out, _ = run_cli("judge", "agreement", "swap_test", write_labels(5, 5, second=False))
+        assert code == 1 and "no second labeller yet" in out
+
+    def test_calibrate_uses_only_agreed_rows(self, run_cli, stub_judge, write_labels):
+        calls = stub_judge()
+        code, out, _ = run_cli("judge", "calibrate", "swap_test", write_labels(16, 16, flip_b={"L01", "L02"}))
+        assert len(calls) == 30 and "κ 0.88; 2 rows they disagree on were left out" in out
 
     def test_calibrate_below_bar_exits_1(self, run_cli, stub_judge, write_labels):
         stub_judge(flip={f"L{i:02d}" for i in range(1, 8)})

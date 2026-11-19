@@ -43,7 +43,7 @@ def test_normalise(out, v):
 class TestLabelSheets:
     def test_columns_put_text_first_and_labels_last(self):
         cols = judges.label_columns(judges.load_template("personalisation_factuality"))
-        assert cols[:2] == ["id", "text"] and cols[-2:] == ["human_verdict", "why"]
+        assert cols[:2] == ["id", "text"] and cols[-3:] == ["human_verdict", "human_verdict_b", "why"]
         assert {"signals", "today", "freshness_days"} <= set(cols)
 
     def test_template_vars_deduplicated(self):
@@ -51,7 +51,7 @@ class TestLabelSheets:
 
     def test_blank_rows(self):
         rows = judges.blank_label_rows("{{text}}", n=3, defaults={"text": ""})
-        assert [r["id"] for r in rows] == ["L01", "L02", "L03"] and set(rows[0]) == {"id", "text", "human_verdict", "why"}
+        assert [r["id"] for r in rows] == ["L01", "L02", "L03"] and set(rows[0]) == {"id", "text", "human_verdict", "human_verdict_b", "why"}
 
     def test_count_labelled(self):
         rows = [{"human_verdict": "pass"}, {"human_verdict": "FAIL "}, {"human_verdict": None}, {"human_verdict": "maybe"}]

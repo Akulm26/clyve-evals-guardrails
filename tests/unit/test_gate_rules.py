@@ -1,4 +1,8 @@
 """gate.check, one rule at a time, on manifests built in memory."""
+import json
+
+from tests.conftest import real_golden_rows
+
 import copy
 
 import pytest
@@ -8,7 +12,7 @@ from gtm_evals.gate import check, report
 GOOD = {
     "name": "wf", "owner": "Akul", "lane": "gtm_engineering",
     "actions": ["score_lead", "send_single", "send_bulk"],
-    "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard"],
+    "guards": ["outreach_guard", "promise_guard", "pii_guard", "injection_guard", "manipulation_guard", "dpdp_guard"],
     "human_approver": "Akul", "canary_percent": 5, "kill_switch": "KS", "token_budget": 1000,
     "logging": {"gate_log": True, "retention_days": 365},
     "data": {"personal_data": True, "fields": ["name", "work_email"], "lawful_basis_field": True,
@@ -34,7 +38,7 @@ def failing(res):
 @pytest.fixture
 def evidence(tmp_path):
     gs = tmp_path / "g.jsonl"
-    gs.write_text("\n".join('{"source": "real"}' for _ in range(30)), encoding="utf-8")
+    gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
     return {"golden_set": str(gs)}
 
 
@@ -153,8 +157,25 @@ class TestJudges:
         assert check(m, policy)["verdict"] == "PILOT ONLY"
 
     def test_calibrated_judge_without_label_file(self, policy, evidence):
-        m = make(**evidence, judges=[{"template": "swap_test", "calibration": {"labelled_cases": 30, "agreement": 0.9}}])
+        m = make(**evidence, judges=[{"template": "swap_test", "calibration": {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.85}}])
         assert check(m, policy)["verdict"] == "DEPLOYABLE"
+
+    @pytest.mark.parametrize("kappa", [None, 0.6])
+    def test_judge_needs_two_labellers(self, kappa, policy, evidence):
+        cal = {"labelled_cases": 30, "agreement": 0.9} | ({"kappa": kappa} if kappa is not None else {})
+        res = check(make(**evidence, judges=[{"template": "swap_test", "calibration": cal}]), policy)
+        assert res["verdict"] == "PILOT ONLY" and any("two labellers" in x for x in failing(res))
+
+    def test_one_labeller_file_is_not_enough(self, policy, evidence, write_labels):
+        m = make(**evidence, judges=[{"template": "swap_test", "labels": str(write_labels(15, 15, second=False)),
+                                      "calibration": {"labelled_cases": 30, "agreement": 0.9}}])
+        assert any("no second labeller" in x for x in failing(check(m, policy)))
+
+    def test_two_labeller_disagreements_dont_count(self, policy, evidence, write_labels):
+        lab = write_labels(16, 16, flip_b={"L01", "L02", "L03"})       # 29 agreed rows < 30 claimed
+        m = make(**evidence, judges=[{"template": "swap_test", "labels": str(lab),
+                                      "calibration": {"labelled_cases": 30, "agreement": 0.9}}])
+        assert any("file has 29 labelled" in x for x in failing(check(m, policy)))
 
     def test_label_file_must_back_the_claim(self, policy, evidence, write_labels):
         few = write_labels(5, 5)
@@ -175,7 +196,7 @@ class TestJudges:
 
     def test_paths_resolve_from_base_dir(self, policy, tmp_path, write_labels):
         sub = tmp_path / "repo"; sub.mkdir()
-        (sub / "g.jsonl").write_text("\n".join('{"source": "real"}' for _ in range(30)), encoding="utf-8")
+        (sub / "g.jsonl").write_text("\n".join(json.dumps(r) for r in real_golden_rows()), encoding="utf-8")
         write_labels(15, 15).rename(sub / "l.csv")
         m = make(golden_set="g.jsonl", judges=[{"template": "swap_test", "labels": "l.csv",
                                                 "calibration": {"labelled_cases": 30, "agreement": 0.9}}])

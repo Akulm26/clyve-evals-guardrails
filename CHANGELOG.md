@@ -2,7 +2,21 @@
 
 ## Unreleased (0.2.0)
 
-Phase 0 of the adoption plan: fixes to checks that were wrong or out of date.
+Phases 0 and 1 of the adoption plan. Guardrails and evals ship together, one item on each track per phase.
+
+### Phase 1 · India rules + proof size
+
+- **Guardrails**
+  - TRAI (TCCCPR as amended Feb 2025) in `automation_guard` for SMS and voice: no request to opt in again within 90 days of an opt-out; consent given during a transaction covers promotions for 7 days; SMS needs a DLT template ID whose category matches the message; sender header suffix must match the category (`trai.header_suffix`, to confirm against TRAI's text). Consent can now be `{"granted", "at", "source"}`.
+  - New `dpdp_guard` (DPDP Act 2023 + Rules 2025): `check_campaign` blocks behavioural targeting where the audience may include minors and processing children's data without parental-consent records; `check_notice` checks a consent notice covers data, purpose, withdrawal, grievance contact and the Data Protection Board; `check_contact` requires a consent record ID when `dpdp.require_consent_record` is on. Required in the `marketing_automation` and `gtm_engineering` lanes.
+- **Evals**
+  - New `evidence` module: `required_cases()` (Cochran, with finite-population correction), `strata_shortfall()`, `cohen_kappa()`, `agreement()`.
+  - The gate sizes the real cases a workflow needs from its `claims: {precision, margin}` (never below 30; 97 when no claim is stated) and requires a minimum share per stratum (40/35/25).
+  - Two labellers: label sheets gain `human_verdict_b`; `gtm-evals judge agreement`; `calibrate` uses only agreed rows and reports κ; `--update` writes κ; the gate requires κ ≥ 0.80 (`evidence.require_two_labellers`).
+  - Clyve's three workflows state `claims: {precision: 0.90, margin: 0.10}` (35 real cases each).
+  - 16 golden cases for TRAI and DPDP; golden types `dpdp_campaign`, `dpdp_notice`.
+
+### Phase 0 · Fixes to checks that were wrong or out of date
 
 - **Guardrails**
   - `outreach_guard`: bulk senders (`context["bulk_sender"]`) need RFC 8058 one-click unsubscribe headers (`List-Unsubscribe` with an https URL + `List-Unsubscribe-Post: List-Unsubscribe=One-Click`), per Gmail's bulk-sender rules; `one_click_unsubscribe: bulk | always | never`.

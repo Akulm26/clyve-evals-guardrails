@@ -117,18 +117,44 @@ def send_event():
 
 @pytest.fixture
 def write_labels(tmp_path):
-    """write_labels(n_pass, n_fail, blank=0) -> path of a labelling-sheet CSV."""
-    def _w(n_pass: int, n_fail: int, blank: int = 0, name: str = "labels.csv") -> Path:
+    """write_labels(n_pass, n_fail, blank=0, second=True, flip_b=()) -> path of a labelling-sheet CSV.
+    second=True fills human_verdict_b the same as human_verdict (κ = 1); ids in flip_b get the opposite verdict."""
+    def _w(n_pass: int, n_fail: int, blank: int = 0, name: str = "labels.csv", second: bool = True,
+           flip_b=()) -> Path:
         p = tmp_path / name
         with p.open("w", encoding="utf-8", newline="") as f:
             w = csv.writer(f)
-            w.writerow(["id", "text", "signals", "human_verdict", "why", "date_sent", "today", "freshness_days"])
+            w.writerow(["id", "text", "signals", "human_verdict", "human_verdict_b", "why", "date_sent", "today",
+                        "freshness_days"])
             i = 0
             for verdict, n in (("pass", n_pass), ("fail", n_fail), ("", blank)):
                 for _ in range(n):
                     i += 1
-                    w.writerow([f"L{i:02d}", "msg" if verdict else "", "S1: x" if verdict else "", verdict, "",
+                    rid = f"L{i:02d}"
+                    b = ({"pass": "fail", "fail": "pass"}[verdict] if rid in flip_b else verdict) if (second and verdict) else ""
+                    w.writerow([rid, "msg" if verdict else "", "S1: x" if verdict else "", verdict, b, "",
                                 "2026-11-18" if verdict else "", "", 45])
+        return p
+    return _w
+
+
+def real_golden_rows(n: int = 98) -> list[dict]:
+    """Enough real, stratified golden rows for a DEPLOYABLE verdict at the default claim (97, 40/35/25)."""
+    shares = (("standard", 0.40), ("ambiguous", 0.35), ("adversarial", 0.25))
+    out = []
+    for s, share in shares:
+        out += [{"source": "real", "stratum": s}] * -(-int(n * share * 100) // 100)
+    return out[:max(n, len(out))]
+
+
+@pytest.fixture
+def write_golden(tmp_path):
+    """write_golden(n=98, name='g.jsonl', source='real') -> path of a stratified golden set."""
+    import json
+
+    def _w(n: int = 98, name: str = "g.jsonl", source: str = "real") -> Path:
+        p = tmp_path / name
+        p.write_text("\n".join(json.dumps(dict(r, source=source)) for r in real_golden_rows(n)), encoding="utf-8")
         return p
     return _w
 

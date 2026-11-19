@@ -61,7 +61,14 @@ def run(template: str, values: dict, model: str | None = None) -> dict:
 
 
 def calibrate(template: str, rows: list[dict], model: str | None = None) -> dict:
-    """rows: dicts with the template's variables + human_verdict. Returns agreement (KPI Q3)."""
+    """rows: dicts with the template's variables + human_verdict (+ human_verdict_b from a second labeller).
+    With a second labeller, only rows both labellers agree on are used, and κ is reported. Returns
+    agreement with the humans (KPI Q3)."""
+    from .evidence import agreement as two_labellers
+    agr = two_labellers(rows)
+    if agr["second_labeller"]:
+        keep = set(agr["agreed"])
+        rows = [r for r in rows if r.get("id") in keep]
     agree = total = 0
     results = []
     for r in rows:
@@ -73,11 +80,14 @@ def calibrate(template: str, rows: list[dict], model: str | None = None) -> dict
         total += 1
         agree += int(out["_verdict"] == r["human_verdict"])
         results.append((r.get("id"), out["_verdict"], r.get("human_verdict")))
-    return {"labelled_cases": total, "agreement": agree / total if total else 0.0, "results": results}
+    out = {"labelled_cases": total, "agreement": agree / total if total else 0.0, "results": results}
+    if agr["second_labeller"]:
+        out.update(kappa=agr["kappa"], disagree=agr["disagree"])
+    return out
 
 
 # ---------- labelling sheets ----------
-LABEL_TAIL = ["human_verdict", "why"]
+LABEL_TAIL = ["human_verdict", "human_verdict_b", "why"]   # _b: a second labeller, without seeing the first
 
 
 def template_vars(template: str) -> list[str]:
@@ -100,11 +110,17 @@ def blank_label_rows(template: str, n: int = 30, prefix: str = "L", defaults: di
 
 
 def count_labelled(rows: list[dict]) -> dict:
+    """Rows with a pass/fail label. With a second labeller (human_verdict_b), only rows both agree on count."""
+    if any(str(r.get("human_verdict_b") or "").strip().lower() in ("pass", "fail") for r in rows):
+        from .evidence import agreement as two_labellers
+        agr = two_labellers(rows)
+        keep = set(agr["agreed"])
+        rows = [r for r in rows if r.get("id") in keep]
     hv = [str(r.get("human_verdict") or "").strip().lower() for r in rows]
     return {"labelled": sum(v in ("pass", "fail") for v in hv), "pass": hv.count("pass"), "fail": hv.count("fail")}
 
 
-def update_manifest(path, template_name: str, labelled_cases: int, agreement: float) -> bool:
+def update_manifest(path, template_name: str, labelled_cases: int, agreement: float, kappa: float | None = None) -> bool:
     """Write a calibration result into a workflow manifest in place, keeping its comments.
     Returns False if the manifest has no judge entry for this template."""
     import re
@@ -116,8 +132,9 @@ def update_manifest(path, template_name: str, labelled_cases: int, agreement: fl
             for k in range(i + 1, min(i + 6, len(lines))):
                 m = re.match(r"(\s*)calibration:\s*{[^}]*}(.*)", lines[k].rstrip("\n"))
                 if m:
+                    kap = f", kappa: {kappa:.2f}" if kappa is not None else ""
                     lines[k] = (f"{m.group(1)}calibration: {{labelled_cases: {labelled_cases}, "
-                                f"agreement: {agreement:.2f}}}     # gtm-evals judge calibrate\n")
+                                f"agreement: {agreement:.2f}{kap}}}     # gtm-evals judge calibrate\n")
                     p.write_text("".join(lines), encoding="utf-8")
                     return True
     return False

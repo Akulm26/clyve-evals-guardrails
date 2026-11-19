@@ -4,11 +4,12 @@ owner: Akul
 lane: gtm_engineering
 status: pilot
 actions: [score_lead, crm_update, send_single, send_bulk]
-guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate, enrichment_guard]
+guards: [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, claims_gate, enrichment_guard, dpdp_guard]
 judges:
   - template: personalisation_factuality
     labels: evals/labels/personalisation_factuality.csv   # filled from the labelling sheet
     calibration: {labelled_cases: 0, agreement: 0}     # Q3 not done yet
+claims: {precision: 0.90, margin: 0.10}   # what this workflow claims; the gate sizes the proof from it (35 real cases)
 golden_set: evals/datasets/outreach_messages.jsonl
 human_approver: Akul
 canary_percent: 5

@@ -15,10 +15,11 @@ import json
 from pathlib import Path
 
 from .action_gate import ActionGate
+from .evidence import agreement, required_cases, strata_shortfall
 
 GUARD_FILES = {"claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
                "automation_guard", "manipulation_guard", "visibility_stats", "action_gate",
-               "ai_seo_guard", "claim_safety_guard", "enrichment_guard"}
+               "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard"}
 _BASE = [Path.cwd()]
 
 
@@ -90,12 +91,21 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
     gs = manifest.get("golden_set")
     rows = _rows(gs) if gs else None
     deploy.append((rows is not None, f"golden set exists ({gs or 'none'})"))
-    real = sum(1 for r in (rows or []) if r.get("source") == "real")
-    deploy.append((real >= g["min_real_golden_cases"], f"≥ {g['min_real_golden_cases']} real cases in the golden set (has {real})"))
+    ev = policy["evidence"]
+    claim = manifest.get("claims") or {}
+    rate, margin = claim.get("precision", ev["default_rate"]), claim.get("margin", ev["default_margin"])
+    need = max(g["min_real_golden_cases"], required_cases(rate, margin, ev["confidence"]))
+    real_rows = [r for r in (rows or []) if r.get("source") == "real"]
+    deploy.append((len(real_rows) >= need, f"≥ {need} real cases to show {rate:.0%} ±{margin:.0%} at "
+                                            f"{ev['confidence']:.0%} confidence (has {len(real_rows)})"))
+    short = strata_shortfall(real_rows, need, claim.get("strata", ev["strata"]))
+    deploy.append((not short, "real cases cover each stratum" + (
+        f" (short: {', '.join(f'{k} {n}' for k, n in short.items())})" if short else "")))
     for j in manifest.get("judges", []):
         cal = j.get("calibration") or {}
         ok = cal.get("labelled_cases", 0) >= g["judge_min_labels"] and cal.get("agreement", 0) >= g["judge_min_agreement"]
         deploy.append((ok, f"judge '{j.get('template')}' calibrated (≥{g['judge_min_labels']} labels, ≥{g['judge_min_agreement']:.0%} agreement)"))
+        kappa = cal.get("kappa")
         if j.get("labels"):
             lp = next((b / j["labels"] for b in _BASE if (b / j["labels"]).exists()), None)
             if lp is None:
@@ -103,10 +113,17 @@ def check(manifest: dict, policy: dict, base_dir: str | Path | None = None) -> d
             else:
                 from .judges import count_labelled
                 from .runner import load_rows
-                have = count_labelled(load_rows(lp))["labelled"]
+                lab = load_rows(lp)
+                agr = agreement(lab)
+                have = len(agr["agreed"]) if agr["second_labeller"] else count_labelled(lab)["labelled"]
                 claimed = cal.get("labelled_cases", 0)
                 deploy.append((claimed <= have, f"calibration for '{j.get('template')}' matches its label file "
                                                 f"(claims {claimed}, file has {have} labelled)"))
+                kappa = agr["kappa"] if agr["second_labeller"] else None
+        if ev.get("require_two_labellers"):
+            deploy.append((kappa is not None and kappa >= ev["min_kappa"],
+                           f"judge '{j.get('template')}' labels agreed by two labellers (κ ≥ {ev['min_kappa']:.2f}"
+                           + (f", has {kappa:.2f})" if kappa is not None else ", no second labeller)")))
     deploy.append((bool(manifest.get("owner")), "a named owner"))
 
     if not all(o for o, _ in safe + ethical):

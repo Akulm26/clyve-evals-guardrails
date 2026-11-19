@@ -1,3 +1,6 @@
+import json
+
+from tests.conftest import real_golden_rows
 import copy
 import sys
 from pathlib import Path
@@ -25,21 +28,22 @@ def test_teardown_is_pilot_until_evidence_is_real():
 def test_deployable_when_evidence_real(tmp_path, monkeypatch):
     m = copy.deepcopy(GOOD)
     gs = tmp_path / "real.jsonl"
-    gs.write_text("\n".join('{"source": "real"}' for _ in range(30)))
+    gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()))
     m["golden_set"] = str(gs)
     labels = tmp_path / "labels.csv"
-    labels.write_text("id,text,human_verdict\n" + "\n".join(f"L{i},msg,{'pass' if i % 2 else 'fail'}" for i in range(30)))
+    labels.write_text("id,text,human_verdict,human_verdict_b\n"
+                      + "\n".join(f"L{i},msg,{v},{v}" for i in range(30) for v in ['pass' if i % 2 else 'fail']))
     m["judges"][0]["labels"] = str(labels)
-    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9}
+    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9}
     assert check(m, P)["verdict"] == "DEPLOYABLE"
 
 
 def test_calibration_cannot_claim_more_labels_than_the_file_has(tmp_path):
     m = copy.deepcopy(GOOD)
     gs = tmp_path / "real.jsonl"
-    gs.write_text("\n".join('{"source": "real"}' for _ in range(30)))
+    gs.write_text("\n".join(json.dumps(r) for r in real_golden_rows()))
     m["golden_set"] = str(gs)
-    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9}   # label file in repo is still empty
+    m["judges"][0]["calibration"] = {"labelled_cases": 30, "agreement": 0.9, "kappa": 0.9}   # label file in repo is still empty
     r = check(m, P, base_dir=ROOT)
     assert r["verdict"] == "PILOT ONLY"
     assert any("matches its label file" in t and not ok for ok, t in r["deployable"])
@@ -48,7 +52,7 @@ def test_calibration_cannot_claim_more_labels_than_the_file_has(tmp_path):
 def test_label_sheet_cli_and_manifest_update(tmp_path):
     from gtm_evals import judges
     t = judges.load_template("personalisation_factuality")
-    assert judges.label_columns(t)[:2] == ["id", "text"] and judges.label_columns(t)[-2:] == ["human_verdict", "why"]
+    assert judges.label_columns(t)[:2] == ["id", "text"] and judges.label_columns(t)[-3:] == ["human_verdict", "human_verdict_b", "why"]
     mf = tmp_path / "wf.yaml"
     mf.write_text("judges:\n  - template: personalisation_factuality\n    calibration: {labelled_cases: 0, agreement: 0}  # old\n")
     assert judges.update_manifest(mf, "personalisation_factuality", 34, 0.882)

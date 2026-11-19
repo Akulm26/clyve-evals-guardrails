@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, enrichment_guard, injection_guard,
+from . import (ai_seo_guard, automation_guard, claim_safety_guard, claims_gate, dpdp_guard, enrichment_guard, injection_guard,
                manipulation_guard, outreach_guard, pii_guard, promise_guard, visibility_stats)
 from .core import Verdict
 
@@ -52,6 +52,10 @@ def run_case(row: dict, policy: dict, base: Path) -> Verdict:
     if g == "visibility_rows":
         problems = visibility_stats.validate_rows(x["rows"], policy)
         return Verdict.from_violations("visibility_stats", problems)
+    if g == "dpdp_campaign":
+        return dpdp_guard.check_campaign(x["campaign"], policy)
+    if g == "dpdp_notice":
+        return dpdp_guard.check_notice(x["text"], policy)
     if g == "claim_safety":
         return claim_safety_guard.check(x["text"], x.get("category"), policy, x.get("competitors"))
     if g == "enrichment":
@@ -75,9 +79,11 @@ def load_rows(path: str | Path) -> list[dict]:
         with path.open(encoding="utf-8-sig", newline="") as f:
             rows = [{k.strip(): (v or "").strip() for k, v in r.items() if k} for r in csv.DictReader(f)]
         for r in rows:
-            hv = r.get("human_verdict", "").lower()
-            r["human_verdict"] = hv if hv in ("pass", "fail") else None
-        return [r for r in rows if any(v for k, v in r.items() if k != "human_verdict")]
+            for col in ("human_verdict", "human_verdict_b"):
+                if col in r or col == "human_verdict":
+                    hv = (r.get(col) or "").lower()
+                    r[col] = hv if hv in ("pass", "fail") else None
+        return [r for r in rows if any(v for k, v in r.items() if k not in ("human_verdict", "human_verdict_b"))]
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
 
 

@@ -25,6 +25,27 @@ promise:
     - "\\b(cited|recommended|ranked|mentioned|featured)\\s+(in|within)\\s+(a|one|two|three|four|six|\\d+)\\s+(day|week|month)s?\\b"
     - "\\b(the\\s+)?top\\s+(answer|result|recommendation|pick)\\s+(on|in)\\b"
 
+dpdp:   # DPDP Act 2023 + DPDP Rules 2025 (notified 13 Nov 2025). Not legal advice; duties phase in by date.
+  adult_age: 18
+  child_categories: [kids, kid, children, baby, infant, toddler, teen, school, toy, kids nutrition]
+  behavioural_segment_patterns: ["brows", "viewed", "visited", "abandon", "lookalike", "retarget", "behaviou?r", "interest", "affinity"]
+  require_consent_record: false    # turn on once the Rules' consent duties apply to you
+  notice_must_cover:
+    "what personal data is collected": ["(we|will) collect", "data we (collect|use)", "personal data", "information we collect", "your (name|email|phone|number)"]
+    "why it is used": ["purpose", "to send you", "we use (it|this|your)", "in order to", "so that we can"]
+    "how to withdraw consent": ["withdraw", "unsubscribe", "opt[ -]?out", "reply stop", "revoke"]
+    "who to contact with a grievance": ["grievance", "contact (us|our)", "data protection officer", "dpo", "write to us", "@"]
+    "that a complaint can go to the Data Protection Board": ["data protection board", "the board"]
+
+trai:   # TRAI TCCCPR as amended Feb 2025 (PR 11/2025). Confirm against TRAI's current text before relying on it.
+  channels: [sms, voice]
+  dlt_channels: [sms]
+  reconsent_lock_days: 90          # after an opt-out, no request to opt in again for 90 days
+  transaction_consent_days: 7      # consent given during a transaction covers promotions for 7 days
+  # Header suffix by category. Widely reported as -P / -S / -T / -G; one fetched TRAI text read differently: verify.
+  header_suffix: {promotional: P, service: S, transactional: T, government: G}
+  category_aliases: {transactional: transactional, service: service, otp: transactional, alert: service, reminder: service}
+
 claim_safety:   # regulated categories (ContentOS quality gate). Not legal advice: review against current ASCI / FSSAI rules.
   regulated_categories: [food, beverage, spice, masala, snack, supplement, nutraceutical, health, wellness, ayurved, pharma,
                          personal care, skincare, skin care, cosmetic, haircare, hair care, baby, infant, kids nutrition]
@@ -172,12 +193,20 @@ manipulation:   # ethics: escalated for a human to verify, never auto-sent
     - "\\byou('ll| will) (regret|lose everything|be left behind)\\b"
     - "\\bact (now|fast)\\b"
 
+evidence:   # how much proof a DEPLOYABLE verdict needs (gtm_evals.evidence)
+  confidence: 0.95
+  default_rate: 0.5        # used when a manifest doesn't state its claim (the conservative choice)
+  default_margin: 0.10     # ±10% → 97 real cases at rate 0.5, 35 at a stated 0.9
+  strata: {standard: 0.40, ambiguous: 0.35, adversarial: 0.25}
+  require_two_labellers: true
+  min_kappa: 0.80
+
 deployment_gate:
   lanes:                     # guards every workflow in a lane must wire in
     content_ops:          [claims_gate, promise_guard, manipulation_guard, claim_safety_guard, pii_guard, injection_guard]
     ai_seo:               [ai_seo_guard, visibility_stats, promise_guard]
-    gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard]
-    marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard]
+    gtm_engineering:      [outreach_guard, promise_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]
+    marketing_automation: [automation_guard, pii_guard, injection_guard, manipulation_guard, dpdp_guard]
   lane_aliases: {ai_visibility: ai_seo}   # old name, still accepted
   min_real_golden_cases: 30  # needed before 'deployed'; fewer = pilot only
   judge_min_labels: 30

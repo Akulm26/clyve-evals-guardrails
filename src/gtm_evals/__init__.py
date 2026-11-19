@@ -14,6 +14,7 @@ from . import (  # noqa: F401
     automation_guard,
     claim_safety_guard,
     claims_gate,
+    dpdp_guard,
     enrichment_guard,
     injection_guard,
     manipulation_guard,
@@ -30,10 +31,10 @@ __version__ = "0.1.1"
 GUARDS = {
     "claims": claims_gate, "promise": promise_guard, "pii": pii_guard, "injection": injection_guard,
     "outreach": outreach_guard, "automation": automation_guard, "manipulation": manipulation_guard,
-    "claim_safety": claim_safety_guard, "enrichment": enrichment_guard, "ai_seo": ai_seo_guard,
+    "claim_safety": claim_safety_guard, "dpdp": dpdp_guard, "enrichment": enrichment_guard, "ai_seo": ai_seo_guard,
 }
 
 __all__ = ["ActionGate", "Verdict", "combine", "load_policy", "list_profiles", "GUARDS", "__version__",
            "claims_gate", "promise_guard", "pii_guard", "injection_guard", "outreach_guard",
            "automation_guard", "manipulation_guard", "visibility_stats",
-           "ai_seo_guard", "claim_safety_guard", "enrichment_guard"]
+           "ai_seo_guard", "claim_safety_guard", "enrichment_guard", "dpdp_guard"]
